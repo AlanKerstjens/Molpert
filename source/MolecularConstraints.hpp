@@ -180,7 +180,7 @@ public:
     atom_constraint_generator(atom_constraint_generator),
     bond_constraint_generator(bond_constraint_generator),
     environment_constraint_generator(environment_constraint_generator),
-    environment_generator(environment_radius, LoneAtomHashes) {};
+    environment_generator(environment_radius) {};
 
   void GenerateAtomConstraints(
     const RDKit::ROMol& molecule,

@@ -54,14 +54,6 @@ public:
       is_null = true;
     };
 
-    std::uint64_t Hash() const {
-      // Equivalent of LoneAtomHash
-      std::uint64_t hash = atomic_number;
-      boost::hash_combine(hash, formal_charge);
-      boost::hash_combine(hash, n_explicit_hydrogens);
-      return hash;
-    }
-
     Tag GetAtomTag() const {
       return atom_tag;
     };
@@ -228,7 +220,8 @@ private:
     std::vector<std::uint64_t> atom_hashes;
     atom_hashes.reserve(boost::num_vertices(topology));
     for (auto vertex : boost::make_iterator_range(boost::vertices(topology))) {
-      atom_hashes.push_back(topology[vertex].Hash());
+      AtomKey atom_key = GetAtomKey(vertex);
+      atom_hashes.push_back(hash_value(atom_key));
     };
     return atom_hashes;
   };
@@ -455,7 +448,7 @@ public:
       posterior_environments[atom_idx] = std::move(environment);
     };
     std::size_t n_atoms = molecule.getNumAtoms();
-    std::vector<std::uint64_t> prior_atom_hashes = LoneAtomHashes(molecule);
+    std::vector<std::uint64_t> prior_atom_hashes = AtomKeyHashes(molecule);
     std::vector<std::uint64_t> posterior_atom_hashes = AtomHashes();
     for (std::size_t atom_idx = affected_environments.find_first();
       atom_idx != boost::dynamic_bitset<>::npos;

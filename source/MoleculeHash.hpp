@@ -6,6 +6,7 @@
 #include <GraphMol/MolOps.h>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/container_hash/hash.hpp>
+#include "MolecularKeys.hpp"
 
 typedef std::function<
   std::vector<std::uint64_t>(const RDKit::ROMol&)> AtomsHasher;
@@ -54,6 +55,16 @@ std::vector<std::uint64_t> RingAwareAtomHashes(const RDKit::ROMol& molecule) {
     const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     atom_hashes[atom_idx] = RingAwareAtomHash(
       atom, ring_info->numAtomRings(atom_idx));
+  };
+  return atom_hashes;
+};
+
+std::vector<std::uint64_t> AtomKeyHashes(const RDKit::ROMol& molecule) {
+  std::size_t n = molecule.getNumAtoms();
+  std::vector<std::uint64_t> atom_hashes (n);
+  for (std::size_t atom_idx = 0; atom_idx < n; ++atom_idx) {
+    AtomKey atom_key (molecule.getAtomWithIdx(atom_idx));
+    atom_hashes[atom_idx] = hash_value(atom_key);
   };
   return atom_hashes;
 };

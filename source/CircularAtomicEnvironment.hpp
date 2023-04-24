@@ -56,7 +56,7 @@ public:
   };
 
   EnvironmentKey Key() const {
-    return Hash(LoneAtomHashes(*molecule));
+    return Hash(AtomKeyHashes(*molecule));
   };
 
   std::vector<std::size_t> AtomsAtDistance(std::uint8_t distance) const {
@@ -122,7 +122,7 @@ private:
 public:
   CircularAtomicEnvironmentGenerator(
     std::uint8_t environment_radius = 2,
-    const AtomsHasher& atoms_hasher = LoneAtomHashes) :
+    const AtomsHasher& atoms_hasher = AtomKeyHashes) :
     environment_radius(environment_radius),
     atoms_hasher(atoms_hasher) {};
 
