@@ -102,15 +102,26 @@ private:
       foreign_bond_frequency_threshold & foreign_environment_frequency_threshold;
   };
 
-  template <class First, class Second>
-  std::vector<First> FirstOfPairsVector(
-    const std::vector<std::pair<First, Second>>& pairs_vector) const {
-    std::size_t n = pairs_vector.size();
-    std::vector<First> firsts (n);
-    for (std::size_t i = 0; i < n; ++i) {
-      firsts[i] = pairs_vector[i].first;
+  template <class Key, class Value, class Hash>
+  std::vector<Value> AllowedValues(
+    const std::unordered_map<
+      Key,
+      std::vector<std::pair<Value, std::uint64_t>>,
+      Hash>& kv,
+    const Key& key,
+    std::uint64_t frequency_threshold = 1) const {
+    std::vector<Value> values;
+    auto it = kv.find(key);
+    if (it == kv.cend()) {
+      return values;
     };
-    return firsts;
+    values.reserve(it->second.size());
+    for (const auto& [value, frequency] : it->second) {
+      if (frequency >= frequency_threshold) {
+        values.push_back(value);
+      };
+    };
+    return values;
   };
 
   template <class Dictionary, class Key>
@@ -322,19 +333,19 @@ public:
   };
 
   std::vector<std::uint8_t> Z_DV(const AtomKey::DV& dv) const {
-    return FirstOfPairsVector(dv_z.at(dv));
+    return AllowedValues(dv_z, dv, foreign_dvz_frequency_threshold);
   };
 
   std::vector<std::int8_t> Q_DVZ(const AtomKey::DVZ& dvz) const {
-    return FirstOfPairsVector(dvz_q.at(dvz));
+    return AllowedValues(dvz_q, dvz, foreign_dvzq_frequency_threshold);
   };
 
   std::vector<std::uint8_t> H_DVZQ(const AtomKey::DVZQ& dvzq) const {
-    return FirstOfPairsVector(dvzq_h.at(dvzq));
+    return AllowedValues(dvzq_h, dvzq, foreign_atom_frequency_threshold);
   };
 
   std::vector<RDKit::Bond::BondType> B_K1K2(const BondKey::K1K2& k1k2) const {
-    return FirstOfPairsVector(k1k2_b.at(k1k2));
+    return AllowedValues(k1k2_b, k1k2, foreign_bond_frequency_threshold);
   };
 
   bool IsForeignAtom(const AtomKey& atom_key) const {
