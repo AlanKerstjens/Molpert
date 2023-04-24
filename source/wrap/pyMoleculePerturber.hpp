@@ -270,13 +270,13 @@ void WrapMoleculePerturber() {
       python::arg("molecule"),
       python::arg("prng"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, AtomIdx, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, AtomIdx, const MolecularConstraints*, const std::vector<std::uint8_t>*) const>(
       "AtomicNumberChanges", &MoleculePerturber::AtomicNumberChanges, (
       python::arg("queue"),
       python::arg("molecule"),
       python::arg("atom_idx"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*, const std::vector<std::uint8_t>*) const>(
       "AtomicNumberChanges", &MoleculePerturber::AtomicNumberChanges, (
       python::arg("queue"),
       python::arg("molecule"),
@@ -293,13 +293,13 @@ void WrapMoleculePerturber() {
       python::arg("molecule"),
       python::arg("prng"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, AtomIdx, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, AtomIdx, const MolecularConstraints*, const std::vector<std::int8_t>*) const>(
       "FormalChargeChanges", &MoleculePerturber::FormalChargeChanges, (
       python::arg("queue"),
       python::arg("molecule"),
       python::arg("atom_idx"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*, const std::vector<std::int8_t>*) const>(
       "FormalChargeChanges", &MoleculePerturber::FormalChargeChanges, (
       python::arg("queue"),
       python::arg("molecule"),
@@ -316,13 +316,13 @@ void WrapMoleculePerturber() {
       python::arg("molecule"),
       python::arg("prng"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, AtomIdx, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, AtomIdx, const MolecularConstraints*, const std::vector<std::uint8_t>*) const>(
       "ExplicitHydrogenChanges", &MoleculePerturber::ExplicitHydrogenChanges, (
       python::arg("queue"),
       python::arg("molecule"),
       python::arg("atom_idx"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*, const std::vector<std::uint8_t>*) const>(
       "ExplicitHydrogenChanges", &MoleculePerturber::ExplicitHydrogenChanges, (
       python::arg("queue"),
       python::arg("molecule"),
@@ -339,13 +339,13 @@ void WrapMoleculePerturber() {
       python::arg("molecule"),
       python::arg("prng"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, BondIdx, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, BondIdx, const MolecularConstraints*, const std::vector<RDKit::Bond::BondType>*) const>(
       "BondTypeChanges", &MoleculePerturber::BondTypeChanges, (
       python::arg("queue"),
       python::arg("molecule"),
       python::arg("bond_idx"),
       python::arg("constraints") = null_constraints))
-    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*) const>(
+    .def<void (MoleculePerturber::*)(MolecularPerturbationQueue&, const RDKit::ROMol&, const MolecularConstraints*, const std::vector<RDKit::Bond::BondType>*) const>(
       "BondTypeChanges", &MoleculePerturber::BondTypeChanges, (
       python::arg("queue"),
       python::arg("molecule"),

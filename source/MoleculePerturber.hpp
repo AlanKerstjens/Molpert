@@ -476,9 +476,13 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     AtomIdx atom_idx,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<std::uint8_t>* allowed_values = nullptr) const {
     const std::vector<std::uint8_t>* values = &atomic_numbers;
-    if (cyclicity_based_atomic_numbers && AtomIsInRing(molecule, atom_idx)) {
+    if (allowed_values) {
+      values = allowed_values;
+    } else if (
+      cyclicity_based_atomic_numbers && AtomIsInRing(molecule, atom_idx)) {
       values = &ring_atomic_numbers;
     };
     const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
@@ -499,10 +503,12 @@ public:
   void AtomicNumberChanges(
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<std::uint8_t>* allowed_values = nullptr) const {
     std::size_t n_atoms = molecule.getNumAtoms();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
-      AtomicNumberChanges(queue, molecule, atom_idx, constraints);
+      AtomicNumberChanges(
+        queue, molecule, atom_idx, constraints, allowed_values);
     };
   };
 
@@ -547,10 +553,15 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     AtomIdx atom_idx,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<std::int8_t>* allowed_values = nullptr) const {
+    const std::vector<std::int8_t>* values = &formal_charges;
+    if (allowed_values) {
+      values = allowed_values;
+    };
     const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     std::int8_t current_formal_charge = atom->getFormalCharge();
-    for (std::int8_t formal_charge : formal_charges) {
+    for (std::int8_t formal_charge : *values) {
       if (formal_charge == current_formal_charge) {
         continue;
       };
@@ -566,10 +577,12 @@ public:
   void FormalChargeChanges(
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<std::int8_t>* allowed_values = nullptr) const {
     std::size_t n_atoms = molecule.getNumAtoms();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
-      FormalChargeChanges(queue, molecule, atom_idx, constraints);
+      FormalChargeChanges(
+        queue, molecule, atom_idx, constraints, allowed_values);
     };
   };
 
@@ -614,10 +627,15 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     AtomIdx atom_idx,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<std::uint8_t>* allowed_values = nullptr) const {
+    const std::vector<std::uint8_t>* values = &n_explicit_hydrogens;
+    if (allowed_values) {
+      values = allowed_values;
+    };
     const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     std::uint8_t current_explicit_hydrogens = atom->getNumExplicitHs();
-    for (std::uint8_t explicit_hydrogens : n_explicit_hydrogens) {
+    for (std::uint8_t explicit_hydrogens : *values) {
       if (explicit_hydrogens == current_explicit_hydrogens) {
         continue;
       };
@@ -633,10 +651,12 @@ public:
   void ExplicitHydrogenChanges(
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<std::uint8_t>* allowed_values = nullptr) const {
     std::size_t n_atoms = molecule.getNumAtoms();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
-      ExplicitHydrogenChanges(queue, molecule, atom_idx, constraints);
+      ExplicitHydrogenChanges(
+        queue, molecule, atom_idx, constraints, allowed_values);
     };
   };
 
@@ -686,9 +706,12 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     BondIdx bond_idx,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<RDKit::Bond::BondType>* allowed_values = nullptr) const {
     const std::vector<RDKit::Bond::BondType>* values = &bond_types;
-    if (cyclicity_based_bond_types && BondIsInRing(molecule, bond_idx)) {
+    if (allowed_values) {
+      values = allowed_values;
+    } else if (cyclicity_based_bond_types && BondIsInRing(molecule, bond_idx)) {
       values = &ring_bond_types;
     };
     const RDKit::Bond* bond = molecule.getBondWithIdx(bond_idx);
@@ -709,10 +732,11 @@ public:
   void BondTypeChanges(
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
-    const MolecularConstraints* constraints = nullptr) const {
+    const MolecularConstraints* constraints = nullptr,
+    const std::vector<RDKit::Bond::BondType>* allowed_values = nullptr) const {
     std::size_t n_bonds = molecule.getNumBonds();
     for (std::size_t bond_idx = 0; bond_idx < n_bonds; ++bond_idx) {
-      BondTypeChanges(queue, molecule, bond_idx, constraints);
+      BondTypeChanges(queue, molecule, bond_idx, constraints, allowed_values);
     };
   };
 
