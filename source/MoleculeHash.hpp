@@ -4,6 +4,7 @@
 
 #include <GraphMol/ROMol.h>
 #include <GraphMol/MolOps.h>
+#include <GraphMol/Fingerprints/MorganFingerprints.h>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/container_hash/hash.hpp>
 #include "MolecularKeys.hpp"
@@ -59,12 +60,16 @@ std::vector<std::uint64_t> RingAwareAtomHashes(const RDKit::ROMol& molecule) {
   return atom_hashes;
 };
 
+std::uint64_t AtomKeyHash(const RDKit::Atom* atom) {
+  AtomKey atom_key (atom);
+  return hash_value(atom_key);
+};
+
 std::vector<std::uint64_t> AtomKeyHashes(const RDKit::ROMol& molecule) {
   std::size_t n = molecule.getNumAtoms();
   std::vector<std::uint64_t> atom_hashes (n);
   for (std::size_t atom_idx = 0; atom_idx < n; ++atom_idx) {
-    AtomKey atom_key (molecule.getAtomWithIdx(atom_idx));
-    atom_hashes[atom_idx] = hash_value(atom_key);
+    atom_hashes[atom_idx] = AtomKeyHash(molecule.getAtomWithIdx(atom_idx));
   };
   return atom_hashes;
 };
@@ -222,6 +227,40 @@ std::uint64_t CollapsingHash(
 
 std::uint64_t BondTypeAsHash(const RDKit::Bond* bond) {
   return bond->getBondType();
+};
+
+
+template <>
+struct std::hash<RDKit::ROMol> {
+  std::size_t operator()(const RDKit::ROMol& molecule) const {
+    std::vector<std::uint32_t> invariants = Invariants(molecule);
+    RDKit::SparseIntVect<std::uint32_t>* fingerprint =
+      RDKit::MorganFingerprints::getFingerprint(molecule, 2, &invariants);
+    std::size_t hash = 0;
+    for (auto [feature_id, count] : fingerprint->getNonzeroElements()) {
+      boost::hash_combine(hash, feature_id);
+      boost::hash_combine(hash, count);
+    };
+    delete fingerprint;
+    return hash;
+  };
+
+  std::vector<std::uint32_t> Invariants(const RDKit::ROMol& molecule) const {
+    // RDKit::ROMols store pre-computed properties. These properties (including
+    // number of implicit hydrogens, valence, aromaticity, stereochemistry and
+    // ring membership) may be invalidated upon molecule edition. However, the
+    // properties aren't necessarily erased and may be accessed by other down-
+    // stream functions. The user is supposed to sanitize the molecule after
+    // modifying it, which recalculates these properties, but doing so in a loop
+    // is expensive and finicky since the calculation may fail. Instead we avoid
+    // using these properties altogether and roll our own invariants.
+    std::size_t n_atoms = molecule.getNumAtoms();
+    std::vector<std::uint32_t> invariants (n_atoms);
+    for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
+      invariants[atom_idx] = AtomKeyHash(molecule.getAtomWithIdx(atom_idx));
+    };
+    return invariants;
+  };
 };
 
 #endif // !_MOLECULE_HASH_HPP_
