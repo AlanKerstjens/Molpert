@@ -259,11 +259,10 @@ static const BondKey NULL_BOND_KEY (
   NULL_ATOM_KEY, NULL_ATOM_KEY, RDKit::Bond::UNSPECIFIED);
 
 
-class MolecularKeys {
+struct MolecularKeys {
   std::vector<AtomKey> atom_keys;
   std::vector<BondKey> bond_keys;
 
-public:
   MolecularKeys(const RDKit::ROMol& molecule) {
     atom_keys.reserve(molecule.getNumAtoms());
     bond_keys.reserve(molecule.getNumBonds());
@@ -276,22 +275,6 @@ public:
         atom_keys[bond->getEndAtomIdx()],
         bond->getBondType());
     };
-  };
-
-  const AtomKey& GetAtomKey(std::size_t atom_idx) const {
-    return atom_keys.at(atom_idx);
-  };
-
-  const BondKey& GetBondKey(std::size_t bond_idx) const {
-    return bond_keys.at(bond_idx);
-  };
-
-  const std::vector<AtomKey>& GetAtomKeys() const {
-    return atom_keys;
-  };
-
-  const std::vector<BondKey>& GetBondKeys() const {
-    return bond_keys;
   };
 };
 

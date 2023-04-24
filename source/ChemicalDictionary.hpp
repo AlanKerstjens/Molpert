@@ -135,18 +135,16 @@ public:
 
   void AddMolecule(const RDKit::ROMol& molecule) {
     MolecularKeys molecular_keys (molecule);
-    const std::vector<AtomKey>& atom_keys = molecular_keys.GetAtomKeys();
-    const std::vector<BondKey>& bond_keys = molecular_keys.GetBondKeys();
-    total_atom_frequency += atom_keys.size();
-    total_bond_frequency += bond_keys.size();
-    for (const AtomKey& atom_key : atom_keys) {
+    total_atom_frequency += molecular_keys.atom_keys.size();
+    total_bond_frequency += molecular_keys.bond_keys.size();
+    for (const AtomKey& atom_key : molecular_keys.atom_keys) {
       IncrementDictionaryValue(d_dictionary, atom_key.d());
       IncrementDictionaryValue(dv_dictionary, atom_key.dv());
       IncrementDictionaryValue(dvz_dictionary, atom_key.dvz());
       IncrementDictionaryValue(dvzq_dictionary, atom_key.dvzq());
       IncrementDictionaryValue(atom_dictionary, std::move(atom_key));
     };
-    for (const BondKey& bond_key : bond_keys) {
+    for (const BondKey& bond_key : molecular_keys.bond_keys) {
       IncrementDictionaryValue(k1k2_dictionary, bond_key.k1k2());
       IncrementDictionaryValue(bond_dictionary, std::move(bond_key));
     };
