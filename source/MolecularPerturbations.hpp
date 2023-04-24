@@ -33,6 +33,9 @@ public:
   static const std::size_t n_types = 16;
   typedef std::bitset<n_types> TypeMask;
 
+  enum TargetType {Atom, Bond};
+  typedef std::pair<TargetType, std::size_t> Target;
+
 public:
   // In-place perturbation
   virtual void operator()(RDKit::RWMol&) const = 0;
