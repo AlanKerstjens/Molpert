@@ -276,6 +276,10 @@ struct MolecularKeys {
         bond->getBondType());
     };
   };
+
+  std::size_t size() const {
+    return atom_keys.size() + bond_keys.size();
+  };
 };
 
 

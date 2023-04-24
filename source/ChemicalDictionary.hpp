@@ -31,13 +31,13 @@ public:
   // Vector values are sorted according to frequency in descending order.
   // This allows us to prioritize the most frequent values fulfilling a query.
   typedef std::unordered_map<
-    AtomKey::DV, std::vector<std::pair<unsigned, std::uint64_t>>,
+    AtomKey::DV, std::vector<std::pair<std::uint8_t, std::uint64_t>>,
     boost::hash<AtomKey::DV>> DV_Z;
   typedef std::unordered_map<
-    AtomKey::DVZ, std::vector<std::pair<int, std::uint64_t>>,
+    AtomKey::DVZ, std::vector<std::pair<std::int8_t, std::uint64_t>>,
     boost::hash<AtomKey::DVZ>> DVZ_Q;
   typedef std::unordered_map<
-    AtomKey::DVZQ, std::vector<std::pair<unsigned, std::uint64_t>>,
+    AtomKey::DVZQ, std::vector<std::pair<std::uint8_t, std::uint64_t>>,
     boost::hash<AtomKey::DVZQ>> DVZQ_H;
   typedef std::unordered_map<
     BondKey::K1K2, std::vector<std::pair<RDKit::Bond::BondType, std::uint64_t>>,
@@ -173,9 +173,9 @@ public:
     AtomKey::DVZ prev_dvz = first_atom_key.dvz();
     AtomKey::DVZQ prev_dvzq = first_atom_key.dvzq();
 
-    std::vector<std::pair<unsigned, std::uint64_t>> dv_zf;
-    std::vector<std::pair<int, std::uint64_t>> dvz_qf;
-    std::vector<std::pair<unsigned, std::uint64_t>> dvzq_hf;
+    std::vector<std::pair<std::uint8_t, std::uint64_t>> dv_zf;
+    std::vector<std::pair<std::int8_t, std::uint64_t>> dvz_qf;
+    std::vector<std::pair<std::uint8_t, std::uint64_t>> dvzq_hf;
 
     dv_zf.emplace_back(first_atom_key.atomic_number, first_atom_frequency);
     dvz_qf.emplace_back(first_atom_key.formal_charge, first_atom_frequency);
@@ -321,15 +321,15 @@ public:
     return it == environment_dictionary.cend() ? 0 : it->second;
   };
 
-  std::vector<unsigned> Z_DV(const AtomKey::DV& dv) const {
+  std::vector<std::uint8_t> Z_DV(const AtomKey::DV& dv) const {
     return FirstOfPairsVector(dv_z.at(dv));
   };
 
-  std::vector<int> Q_DVZ(const AtomKey::DVZ& dvz) const {
+  std::vector<std::int8_t> Q_DVZ(const AtomKey::DVZ& dvz) const {
     return FirstOfPairsVector(dvz_q.at(dvz));
   };
 
-  std::vector<unsigned> H_DVZQ(const AtomKey::DVZQ& dvzq) const {
+  std::vector<std::uint8_t> H_DVZQ(const AtomKey::DVZQ& dvzq) const {
     return FirstOfPairsVector(dvzq_h.at(dvzq));
   };
 
