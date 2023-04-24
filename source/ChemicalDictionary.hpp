@@ -67,11 +67,9 @@ private:
   DVZQ_H dvzq_h;
   K1K2_B k1k2_b;
 
-  // By default we define circular atomic environments. However, you can define
-  // arbitrary environments. It's the user's responsibility to appropiately
-  // track what sort of environments are being generated and stored.
   EnvironmentDictionary environment_dictionary;
-  std::shared_ptr<AtomicEnvironmentGenerator> environment_generator;
+  CircularAtomicEnvironmentGenerator environment_generator;
+  unsigned environment_radius = 2;
 
   std::uint64_t total_atom_frequency = 0, total_bond_frequency = 0;
 
@@ -88,7 +86,7 @@ public:
 private:
   friend class boost::serialization::access;
   template <class Archive>
-  void serialize(Archive& archive, const unsigned version = 20230418) {
+  void serialize(Archive& archive, const unsigned version = 20230424) {
     // NOTE: We can't serialize atoms_hasher because it's a functional.
     // If you are not using the default hasher you should ensure you construct
     // deserialized instances with the same hasher of the serialized instance.
@@ -96,7 +94,7 @@ private:
       atom_dictionary & bond_dictionary & d_dictionary & dv_dictionary &
       dvz_dictionary & dvzq_dictionary & k1k2_dictionary &
       dv_z & dvz_q & dvzq_h & k1k2_b &
-      environment_dictionary &
+      environment_dictionary & environment_radius &
       total_atom_frequency & total_bond_frequency &
       foreign_d_frequency_threshold & foreign_dv_frequency_threshold &
       foreign_dvz_frequency_threshold & foreign_dvzq_frequency_threshold &
@@ -126,25 +124,13 @@ private:
 
 public:
   ChemicalDictionary(unsigned environment_radius = 2) :
-    environment_generator(
-      std::make_shared<CircularAtomicEnvironmentGenerator>(
-        environment_radius)) {};
+    environment_radius(environment_radius),
+    environment_generator(environment_radius) {};
   ChemicalDictionary(
-    std::shared_ptr<AtomicEnvironmentGenerator> environment_generator) :
-    environment_generator(environment_generator) {};
-  ChemicalDictionary(
-    const std::string& path,
-    unsigned environment_radius = 2) :
-    environment_generator(
-      std::make_shared<CircularAtomicEnvironmentGenerator>(
-        environment_radius)) {
+    const std::string& path) {
     Load(path);
-  };
-  ChemicalDictionary(
-    const std::string& path,
-    std::shared_ptr<AtomicEnvironmentGenerator> environment_generator) :
-    environment_generator(environment_generator) {
-    Load(path);
+    environment_generator = CircularAtomicEnvironmentGenerator(
+      environment_radius);
   };
 
   void AddMolecule(const RDKit::ROMol& molecule) {
@@ -166,7 +152,7 @@ public:
     };
     for (const RDKit::Atom* atom : molecule.atoms()) {
       IncrementDictionaryValue(
-        environment_dictionary, environment_generator->Key(atom));
+        environment_dictionary, environment_generator.Key(atom));
     };
   };
 
@@ -369,13 +355,17 @@ public:
     return IsForeignBond(BondKey(bond));
   };
 
+  CircularAtomicEnvironment Environment(const RDKit::Atom* atom) const {
+    return environment_generator(atom);
+  };
+
   bool IsForeignEnvironment(const EnvironmentKey& environment_key) const {
     return EnvironmentFrequency(environment_key) <
       foreign_environment_frequency_threshold;
   };
 
-  bool IsForeignEnvironment(const RDKit::Atom* atom) const {
-    return IsForeignEnvironment(environment_generator->Key(atom));
+  bool IsForeignEnvironment(const RDKit::Atom* atom) {
+    return IsForeignEnvironment(environment_generator.Key(atom));
   };
 
   AtomKey::Error AtomKeyError(const AtomKey& atom_key) const {
@@ -427,7 +417,7 @@ public:
     return environment_dictionary;
   };
 
-  std::shared_ptr<AtomicEnvironmentGenerator> GetEnvironmentGenerator() const {
+  const CircularAtomicEnvironmentGenerator& GetEnvironmentGenerator() const {
     return environment_generator;
   };
 

@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
 	};
 
 	bool kekulize = false;
-  std::uint8_t environment_radius = 2;
+  unsigned environment_radius = 2;
 	std::string input_file_path (argv[1]);
 	std::string output_file_path (argv[2]);
   if (argc > 3) {
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
   ChemicalDictionary dictionary (environment_radius);
 
   std::cout << "Creating ChemicalDictionary with circular atomic environments "
-            << "of radius " << (unsigned)(environment_radius) << std::endl;
+            << "of radius " << environment_radius << std::endl;
 
 	RDKit::ROMOL_SPTR molecule;
 	while (!supplier.atEnd()) {

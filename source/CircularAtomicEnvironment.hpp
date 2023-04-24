@@ -100,16 +100,9 @@ public:
 };
 
 
-class AtomicEnvironmentGenerator {
-public:
-  virtual boost::dynamic_bitset<> operator()(const RDKit::Atom*) = 0;
-  virtual EnvironmentKey Key(const RDKit::Atom*) = 0;
-};
-
-
-class CircularAtomicEnvironmentGenerator : public AtomicEnvironmentGenerator {
-  const std::uint8_t environment_radius;
-  const AtomsHasher atoms_hasher;
+class CircularAtomicEnvironmentGenerator {
+  std::uint8_t environment_radius;
+  AtomsHasher atoms_hasher;
   const RDKit::ROMol* hashed_molecule = nullptr; // Cache
   std::vector<std::uint64_t> atom_hashes; // Cache
 
@@ -126,9 +119,8 @@ public:
     environment_radius(environment_radius),
     atoms_hasher(atoms_hasher) {};
 
-  boost::dynamic_bitset<> operator()(const RDKit::Atom* atom) {
-    CircularAtomicEnvironment environment (atom, environment_radius);
-    return environment.atom_mask;
+  CircularAtomicEnvironment operator()(const RDKit::Atom* atom) const {
+    return CircularAtomicEnvironment(atom, environment_radius);
   };
 
   EnvironmentKey Key(const RDKit::Atom* atom) {

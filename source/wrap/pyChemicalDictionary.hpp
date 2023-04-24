@@ -12,9 +12,8 @@ void WrapChemicalDictionary() {
     "ChemicalDictionary",
     python::init<unsigned>((
       python::arg("environment_radius") = 2)))
-    .def(python::init<const std::string&, unsigned>((
-      python::arg("path"),
-      python::arg("environment_radius") = 2)))
+    .def(python::init<const std::string&>((
+      python::arg("path"))))
     .def("AddMolecule", &ChemicalDictionary::AddMolecule, (
       python::arg("molecule")))
     .def("BuildPartialKeyDictionaries", &ChemicalDictionary::BuildPartialKeyDictionaries)
@@ -39,7 +38,7 @@ void WrapChemicalDictionary() {
     .def<bool (ChemicalDictionary::*)(const EnvironmentKey&) const>(
       "IsForeignEnvironment", &ChemicalDictionary::IsForeignEnvironment, (
         python::arg("environment_key")))
-    .def<bool (ChemicalDictionary::*)(const RDKit::Atom*) const>(
+    .def<bool (ChemicalDictionary::*)(const RDKit::Atom*)>(
       "IsForeignEnvironment", &ChemicalDictionary::IsForeignEnvironment, (
         python::arg("atom")))
     .def("Save", &ChemicalDictionary::Save, (
