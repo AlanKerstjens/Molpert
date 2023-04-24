@@ -263,6 +263,7 @@ struct MolecularKeys {
   std::vector<AtomKey> atom_keys;
   std::vector<BondKey> bond_keys;
 
+  MolecularKeys() = default;
   MolecularKeys(const RDKit::ROMol& molecule) {
     atom_keys.reserve(molecule.getNumAtoms());
     bond_keys.reserve(molecule.getNumBonds());
