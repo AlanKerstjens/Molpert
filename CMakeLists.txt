@@ -54,6 +54,7 @@ target_link_libraries(Molpert INTERFACE
   ${Boost_LIBRARIES}
   RDKitRDGeneral
   RDKitGraphMol
+  RDKitFingerprints
   RDKitSmilesParse
 )
 

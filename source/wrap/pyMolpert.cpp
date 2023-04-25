@@ -29,6 +29,8 @@ BOOST_PYTHON_MODULE(molpert) {
   python::def<Tag (*)(const RDKit::Bond*)>("GetBondTag", GetTag, (
     python::arg("bond")));
 
+  python::def("HashMolecule", HashMolecule, (python::arg("molecule")));
+
   WrapMolecularKeys();
   WrapCircularAtomicEnvironment();
   WrapMolecularPerturbations();

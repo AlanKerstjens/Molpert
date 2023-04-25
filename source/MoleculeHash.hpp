@@ -263,4 +263,10 @@ struct std::hash<RDKit::ROMol> {
   };
 };
 
+
+std::size_t HashMolecule(const RDKit::ROMol& molecule) {
+  static std::hash<RDKit::ROMol> molecule_hasher;
+  return molecule_hasher(molecule);
+};
+
 #endif // !_MOLECULE_HASH_HPP_
