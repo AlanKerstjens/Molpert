@@ -49,6 +49,8 @@ void WrapChemicalDictionary() {
       &ChemicalDictionary::GetTotalAtomFrequency)
     .add_property("total_bond_frequency", 
       &ChemicalDictionary::GetTotalBondFrequency)
+    .add_property("environment_radius", 
+      &ChemicalDictionary::GetEnvironmentRadius)
     .def_readwrite("foreign_d_frequency_threshold", &ChemicalDictionary::foreign_d_frequency_threshold)
     .def_readwrite("foreign_dv_frequency_threshold", &ChemicalDictionary::foreign_dv_frequency_threshold)
     .def_readwrite("foreign_dvz_frequency_threshold", &ChemicalDictionary::foreign_dvz_frequency_threshold)

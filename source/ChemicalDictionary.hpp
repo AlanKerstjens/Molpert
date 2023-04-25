@@ -430,6 +430,10 @@ public:
     return environment_generator;
   };
 
+  unsigned GetEnvironmentRadius() const {
+    return environment_radius;
+  };
+
   void Save(const std::string& path) const {
     std::ofstream output_stream (path, std::ofstream::binary);
     boost::archive::binary_oarchive archive (output_stream);
