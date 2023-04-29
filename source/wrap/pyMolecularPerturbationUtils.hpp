@@ -7,26 +7,29 @@
 
 namespace python = boost::python;
 
-void WrappedPartialSanitization(
-  RDKit::ROMol& molecule,
-  bool kekulize = false,
-  bool aromatize = true) {
+void WrappedCorrectAromaticity(RDKit::ROMol& molecule) {
   RDKit::RWMol& rwmol = static_cast<RDKit::RWMol&> (molecule);
-  PartialSanitization(rwmol, kekulize, aromatize);
+  CorrectAromaticity(rwmol);
 };
 
-void WrappedCorrectElementAromaticity(RDKit::ROMol& molecule) {
+void WrappedCorrectHydrogenCounts(RDKit::ROMol& molecule) {
   RDKit::RWMol& rwmol = static_cast<RDKit::RWMol&> (molecule);
-  CorrectElementAromaticity(rwmol);
+  CorrectHydrogenCounts(rwmol);
+};
+
+void WrappedPartialSanitization(RDKit::ROMol& molecule) {
+  RDKit::RWMol& rwmol = static_cast<RDKit::RWMol&> (molecule);
+  PartialSanitization(rwmol);
 };
 
 void WrapMolecularPerturbationUtils() {
-  python::def("PartialSanitization", WrappedPartialSanitization, (
-    python::arg("molecule"), 
-    python::arg("kekulize") = false,
-    python::arg("aromatize") = true));
+  python::def("CorrectAromaticity", WrappedCorrectAromaticity, (
+    python::arg("molecule")));
 
-  python::def("CorrectElementAromaticity", WrappedCorrectElementAromaticity, (
+  python::def("CorrectHydrogenCounts", WrappedCorrectHydrogenCounts, (
+    python::arg("molecule")));
+
+  python::def("PartialSanitization", WrappedPartialSanitization, (
     python::arg("molecule")));
 };
 

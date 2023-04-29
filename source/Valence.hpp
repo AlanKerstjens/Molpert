@@ -5,7 +5,10 @@
 #include <GraphMol/ROMol.h>
 #include <GraphMol/PeriodicTable.h>
 
-double ExplicitValence(const RDKit::Atom* atom, bool include_hydrogens = true) {
+double ExplicitValence(
+  const RDKit::Atom* atom,
+  bool include_hydrogens = true,
+  bool aromatic_is_single = false) {
   // The way in which the RDKit calculates valence is weird and causes many
   // headaches when working with edited molecules. We define valence as the
   // sum of bond orders. Note that we don't include formal charge in the
@@ -15,6 +18,10 @@ double ExplicitValence(const RDKit::Atom* atom, bool include_hydrogens = true) {
   const RDKit::ROMol& molecule = atom->getOwningMol();
   double valence = include_hydrogens ? atom->getNumExplicitHs() : 0.0;
   for (const RDKit::Bond* bond : molecule.atomBonds(atom)) {
+    if (aromatic_is_single && bond->getBondType() == RDKit::Bond::AROMATIC) {
+      valence += 1.0;
+      continue;
+    };
     valence += bond->getValenceContrib(atom);
   };
   // We return a double, which may be truncated to an int. This would be
@@ -85,12 +92,15 @@ int MaxAllowedValence(unsigned atomic_number) {
 };
 
 int AvailableValence(
-  const RDKit::Atom* atom, bool include_hydrogens = true) {
+  const RDKit::Atom* atom,
+  bool include_hydrogens = true,
+  bool aromatic_is_single = false) {
   int max_allowed_valence = MaxAllowedValence(atom->getAtomicNum());
   if (max_allowed_valence < 0) {
     return std::numeric_limits<int>::max();
   };
-  return max_allowed_valence - ExplicitValence(atom, include_hydrogens);
+  return max_allowed_valence - ExplicitValence(
+    atom, include_hydrogens, aromatic_is_single);
 };
 
 bool IsValenceBelowMax(unsigned atomic_number, int valence) {
