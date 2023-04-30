@@ -85,9 +85,9 @@ public:
   bool assess_distances_with_distance_matrix = false;
 
   // Atomic number change settings
-  bool cyclicity_based_atomic_numbers = false;
+  bool cyclicity_based_atomic_numbers = true;
   // Bond type change settings
-  bool cyclicity_based_bond_types = false;
+  bool cyclicity_based_bond_types = true;
   // These settings don't apply to atom/bond insertions because it is difficult
   // to predict a priori if the newly added atom or bond will be part of a cycle
   // or not.
@@ -104,7 +104,7 @@ public:
   bool atom_insertion_randomize_atomic_number = true;
   bool atom_insertion_randomize_formal_charge = false;
   bool atom_insertion_randomize_n_explicit_hydrogens = false;
-  bool atom_insertion_randomize_bond_types = true;
+  bool atom_insertion_randomize_bond_types = false;
   // Atom insertion settings (deterministic overloads)
   bool atom_insertion_iterate_atomic_numbers = false;
   bool atom_insertion_iterate_formal_charges = false;
@@ -362,8 +362,8 @@ public:
   MoleculePerturber(
     bool use_aromatic_bonds = false,
     bool use_chembl_distribution = true,
-    bool cyclicity_based_atomic_number_weights = false,
-    bool cyclicity_based_bond_type_weights = false) {
+    bool cyclicity_based_atomic_number_weights = true,
+    bool cyclicity_based_bond_type_weights = true) {
     if (use_aromatic_bonds) {
       SetAromaticProperties();
     };
@@ -383,8 +383,8 @@ public:
 
   void SetChEMBLProperties(
     bool use_aromatic_bonds = false,
-    bool cyclicity_based_atomic_number_weights = false,
-    bool cyclicity_based_bond_type_weights = false) {
+    bool cyclicity_based_atomic_number_weights = true,
+    bool cyclicity_based_bond_type_weights = true) {
     // The default value for atom and bond properties is the most frequent value.
     // The probability of changing a property is proportional to how often said
     // property deviates from its default value. We multiply the latter value by

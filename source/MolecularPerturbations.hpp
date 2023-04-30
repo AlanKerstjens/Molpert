@@ -12,7 +12,7 @@ typedef std::size_t BondIdx;
 // Abstract base class for molecular perturbations
 class MolecularPerturbation {
 public:
-  enum Type : std::size_t {
+  enum Type : std::uint16_t {
     AtomicNumberChange_t = 0,
     FormalChargeChange_t = 1,
     ExplicitHydrogensChange_t = 2,
