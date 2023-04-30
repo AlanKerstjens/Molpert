@@ -45,11 +45,10 @@ std::uint64_t RingAwareAtomHash(
 };
 
 std::vector<std::uint64_t> RingAwareAtomHashes(const RDKit::ROMol& molecule) {
-  // Ensure that we have populated RingInfo. This call does nothing if
-  // RingInfo is already initialized, which is always the case unless one
-  // has de-initialized it with RWMol::addBond() or RWMol::removeBond().
-  RDKit::MolOps::findSSSR(molecule);
   const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+  if (!ring_info->isInitialized()) {
+    RDKit::MolOps::findSSSR(molecule);
+  };
   std::size_t n = molecule.getNumAtoms();
   std::vector<std::uint64_t> atom_hashes (n);
   for (std::size_t atom_idx = 0; atom_idx < n; ++atom_idx) {

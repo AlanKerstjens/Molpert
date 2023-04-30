@@ -218,8 +218,10 @@ void CorrectAromaticity(RDKit::RWMol& molecule) {
     available_valences[atom->getIdx()] = available_valence;
   };
   // Create bond masks for the rings of the SSSR.
-  RDKit::MolOps::findSSSR(molecule);
   const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+  if (!ring_info->isInitialized()) {
+    RDKit::MolOps::findSSSR(molecule);
+  };
   std::vector<RingMask> ring_masks;
   ring_masks.reserve(ring_info->numRings());
   for (const std::vector<int>& ring : ring_info->bondRings()) {

@@ -189,6 +189,9 @@ std::vector<boost::dynamic_bitset<>> RingSystems(
   const RDKit::ROMol& molecule) {
   // Initialize the ring systems as the rings of the SSSR.
   const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+  if (!ring_info->isInitialized()) {
+    RDKit::MolOps::findSSSR(molecule);
+  };
   std::size_t n_ring_systems = ring_info->numRings();
   std::vector<boost::dynamic_bitset<>> ring_systems;
   ring_systems.reserve(n_ring_systems);
@@ -325,11 +328,17 @@ public:
 
 bool AtomIsInRing(const RDKit::ROMol& molecule, std::size_t atom_idx) {
   const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+  if (!ring_info->isInitialized()) {
+    RDKit::MolOps::findSSSR(molecule);
+  };
   return ring_info->numAtomRings(atom_idx);
 };
 
 bool BondIsInRing(const RDKit::ROMol& molecule, std::size_t bond_idx) {
   const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+  if (!ring_info->isInitialized()) {
+    RDKit::MolOps::findSSSR(molecule);
+  };
   return ring_info->numBondRings(bond_idx);
 };
 
@@ -374,11 +383,10 @@ bool ConnectedAfterBondDeletion(
   bool calculate_sssr = false) {
   // If we have SSSR data (or we are willing to compute it) we can check if the
   // molecule remains connected by checking if the atom is part of a ring system.
-  if (calculate_sssr) {
-    // This call does nothing if RingInfo is already populated.
+  const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+  if (calculate_sssr && !ring_info->isInitialized()) {
     RDKit::MolOps::findSSSR(molecule);
   };
-  const RDKit::RingInfo* ring_info = molecule.getRingInfo();
   if (ring_info->isInitialized()) {
     return ring_info->numBondRings(bond_idx) > 0;
   };

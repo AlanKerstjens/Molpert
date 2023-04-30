@@ -192,6 +192,9 @@ boost::dynamic_bitset<> RandomSubgraph(
     // increase nor decrease the number of attachment points.
     if (!requests.allow_breaking_cycles) {
       const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+      if (!ring_info->isInitialized()) {
+        RDKit::MolOps::findSSSR(molecule);
+      };
       for (std::size_t atom_idx = start_atoms_mask.find_first();
         atom_idx != boost::dynamic_bitset<>::npos;
         atom_idx = start_atoms_mask.find_next(atom_idx)) {
