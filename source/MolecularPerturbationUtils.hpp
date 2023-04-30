@@ -285,14 +285,17 @@ void CorrectAromaticity(RDKit::RWMol& molecule) {
 };
 
 void CorrectHydrogenCounts(RDKit::RWMol& molecule) {
-  // Allow the RDKit to recalculate the number of implicit hydrogens. 
-  // For this to work properly we must remove all explicit hydrogens.
+  // Allow the RDKit to recalculate the number of implicit hydrogens. For this 
+  // to work to properly we must remove all explicit hydrogens and ensure that
+  // all atoms are labeled as potentially implicit hydrogen baring.
   for (RDKit::Atom* atom : molecule.atoms()) {
     atom->setNumExplicitHs(0);
+    atom->setNoImplicit(false);
   };
   molecule.updatePropertyCache(false);
   // If the number of implicit hydrogens isn't sufficient to satisfy an
-  // element's valence we add extra explicit hydrogens.
+  // element's valence we add extra explicit hydrogens. In theory
+  // updatePropertyCache should do this for us, but it doesn't always work.
   for (RDKit::Atom* atom : molecule.atoms()) {
     auto [min_n_hydrogens, correctable] = MinNumHydrogensForValidValence(atom);
     if (correctable && min_n_hydrogens > atom->getTotalNumHs()) {
@@ -303,11 +306,13 @@ void CorrectHydrogenCounts(RDKit::RWMol& molecule) {
 
 void PartialSanitization(
   RDKit::RWMol& molecule) {
+  // CorrectAromaticity handles partial aromaticity. This includes promoting 
+  // partially aromatic rings to fully aromatic and kekulizing the remainder of 
+  // the aromatic bonds. However, it doesn't perceive aromaticity. For example, 
+  // C1=CC=CC=C1 is kept kekulized. This task is delegated to the RDKit.
   CorrectAromaticity(molecule);
   CorrectHydrogenCounts(molecule);
-  // Sanitize the molecule without strict valence checks and without kekulizing. 
-  // We handle these operations ourselves since the RDKit doesn't play nice with 
-  // incorrect molecules. Aromaticity perception works perfectly fine though.
+  // Sanitize the molecule skipping all steps that we have done manually. 
   static const unsigned sanitization_flags =
     RDKit::MolOps::SanitizeFlags::SANITIZE_ALL ^
     RDKit::MolOps::SanitizeFlags::SANITIZE_PROPERTIES ^
