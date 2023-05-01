@@ -119,7 +119,7 @@ void Kekulize(
   boost::dynamic_bitset<>& bond_mask) {
   if (bond_mask.none()) {
     return;
-  }
+  };
   boost::dynamic_bitset<> bonds = bond_mask;
   auto [bond, availability] = LeastAvailableBond(
       molecule, available_valences, bonds);
@@ -150,7 +150,9 @@ void Kekulize(
     if (next_bonds.none() && !bonds.none()) {
       std::tie(bond, availability) = LeastAvailableBond(
         molecule, available_valences, bonds);
-      next_bonds.set(bond->getIdx());
+      if (bond) {
+        next_bonds.set(bond->getIdx());
+      };
       bond_type = RDKit::Bond::SINGLE;
       continue;
     };
@@ -314,7 +316,7 @@ void PartialSanitization(
   // C1=CC=CC=C1 is kept kekulized. This task is delegated to the RDKit.
   CorrectAromaticity(molecule);
   CorrectHydrogenCounts(molecule);
-  // Sanitize the molecule skipping all steps that we have done manually. 
+  // Sanitize the molecule skipping all steps that we have done manually.
   static const unsigned sanitization_flags =
     RDKit::MolOps::SanitizeFlags::SANITIZE_ALL ^
     RDKit::MolOps::SanitizeFlags::SANITIZE_PROPERTIES ^
