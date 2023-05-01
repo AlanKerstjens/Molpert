@@ -104,7 +104,7 @@ public:
   bool atom_insertion_randomize_atomic_number = true;
   bool atom_insertion_randomize_formal_charge = false;
   bool atom_insertion_randomize_n_explicit_hydrogens = false;
-  bool atom_insertion_randomize_bond_types = false;
+  bool atom_insertion_randomize_bond_types = true;
   // Atom insertion settings (deterministic overloads)
   bool atom_insertion_iterate_atomic_numbers = false;
   bool atom_insertion_iterate_formal_charges = false;
