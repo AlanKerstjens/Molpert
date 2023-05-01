@@ -21,7 +21,7 @@ BOOST_PYTHON_MODULE(molpert) {
   python::def("GetAtomTag", GetAtomTag, (
     python::arg("molecule"),
     python::arg("atom_idx")));
-  python::def("GetBondTag", GetAtomTag, (
+  python::def("GetBondTag", GetBondTag, (
     python::arg("molecule"),
     python::arg("bond_idx")));
   python::def<Tag (*)(const RDKit::Atom*)>("GetAtomTag", GetTag, (
