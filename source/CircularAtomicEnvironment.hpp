@@ -106,18 +106,17 @@ class CircularAtomicEnvironmentGenerator {
   const RDKit::ROMol* hashed_molecule = nullptr; // Cache
   std::vector<std::uint64_t> atom_hashes; // Cache
 
-private:
-  void CalculateAtomHashes(const RDKit::ROMol* molecule) {
-    atom_hashes = atoms_hasher(*molecule);
-    hashed_molecule = molecule;
-  };
-
 public:
   CircularAtomicEnvironmentGenerator(
     std::uint8_t environment_radius = 2,
     const AtomsHasher& atoms_hasher = AtomKeyHashes) :
     environment_radius(environment_radius),
     atoms_hasher(atoms_hasher) {};
+
+  void CalculateAtomHashes(const RDKit::ROMol& molecule) {
+    atom_hashes = atoms_hasher(molecule);
+    hashed_molecule = &molecule;
+  };
 
   CircularAtomicEnvironment operator()(const RDKit::Atom* atom) const {
     return CircularAtomicEnvironment(atom, environment_radius);
@@ -126,7 +125,7 @@ public:
   EnvironmentKey Key(const RDKit::Atom* atom) {
     CircularAtomicEnvironment environment (atom, environment_radius);
     if (environment.molecule != hashed_molecule) {
-      CalculateAtomHashes(environment.molecule);
+      CalculateAtomHashes(*environment.molecule);
     };
     return environment.Hash(atom_hashes);
   };

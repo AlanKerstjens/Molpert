@@ -227,9 +227,13 @@ public:
     environment_constraints.clear();
     for (const RDKit::Atom* atom : molecule.atoms()) {
       Tag atom_tag = GetTag(atom);
+      // Force recalculation of the atom hashes, as the cached values may
+      // reference an old state of the molecule.
+      environment_generator.CalculateAtomHashes(molecule);
+      EnvironmentKey environment_key = environment_generator.Key(atom);
       std::optional<EnvironmentConstraint> environment_constraint = 
         environment_constraint_gen(
-          {NULL_ENVIRONMENT_KEY, environment_generator.Key(atom)});
+          {NULL_ENVIRONMENT_KEY, environment_key});
       if (!environment_constraint) {
         continue;
       };
@@ -484,14 +488,18 @@ public:
     if (MustCheckAtomConstraints() || MustCheckBondConstraints()) {
       auto [atom_key_changes, bond_key_changes] =
         projection.MolecularKeyChanges(molecule, MustCheckBondConstraints());
-      for (const auto& [atom_tag, atom_key_change] : atom_key_changes) {
-        if (!IsAllowed(atom_tag, atom_key_change)) {
-          return false;
+      if (MustCheckAtomConstraints()) {
+        for (const auto& [atom_tag, atom_key_change] : atom_key_changes) {
+          if (!IsAllowed(atom_tag, atom_key_change)) {
+            return false;
+          };
         };
       };
-      for (const auto& [bond_tag, bond_key_change] : bond_key_changes) {
-        if (!IsAllowed(bond_tag, bond_key_change)) {
-          return false;
+      if (MustCheckBondConstraints()) {
+        for (const auto& [bond_tag, bond_key_change] : bond_key_changes) {
+          if (!IsAllowed(bond_tag, bond_key_change)) {
+            return false;
+          };
         };
       };
     };
@@ -559,26 +567,30 @@ public:
     if (MustCheckAtomConstraints() || MustCheckBondConstraints()) {
       auto [atom_key_changes, bond_key_changes] =
         projection.MolecularKeyChanges(molecule, MustCheckBondConstraints());
-      for (const auto& [atom_tag, atom_key_change] : atom_key_changes) {
-        auto [atom_constraint, updated] = 
-          UpdatedAtomConstraint(atom_tag, atom_key_change);
-        if (atom_constraint && !(*atom_constraint)(atom_key_change.second)) {
-          return false;
-        };
-        if (updated) {
-          updated_atom_constraints.emplace_back(
-            atom_tag, std::move(atom_constraint));
-        };
+      if (MustCheckAtomConstraints()) {
+        for (const auto& [atom_tag, atom_key_change] : atom_key_changes) {
+          auto [atom_constraint, updated] = 
+            UpdatedAtomConstraint(atom_tag, atom_key_change);
+          if (atom_constraint && !(*atom_constraint)(atom_key_change.second)) {
+            return false;
+          };
+          if (updated) {
+            updated_atom_constraints.emplace_back(
+              atom_tag, std::move(atom_constraint));
+          };
+        };       
       };
-      for (const auto& [bond_tag, bond_key_change] : bond_key_changes) {
-        auto [bond_constraint, updated] = 
-          UpdatedBondConstraint(bond_tag, bond_key_change);
-        if (bond_constraint && !(*bond_constraint)(bond_key_change.second)) {
-          return false;
-        };
-        if (updated) {
-          updated_bond_constraints.emplace_back(
-            bond_tag, std::move(bond_constraint));
+      if (MustCheckBondConstraints()) {
+        for (const auto& [bond_tag, bond_key_change] : bond_key_changes) {
+          auto [bond_constraint, updated] = 
+            UpdatedBondConstraint(bond_tag, bond_key_change);
+          if (bond_constraint && !(*bond_constraint)(bond_key_change.second)) {
+            return false;
+          };
+          if (updated) {
+            updated_bond_constraints.emplace_back(
+              bond_tag, std::move(bond_constraint));
+          };
         };
       };
     };
