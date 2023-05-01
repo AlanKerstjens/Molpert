@@ -55,6 +55,9 @@ std::vector<AttachmentPoint> ValenceAttachmentPoints(
     if (available_valence <= 0) {
       continue;
     };
+    // Available valence can be up to INT_MAX. We cap it to 4 to avoid excessive
+    // memory consumption.
+    available_valence = available_valence > 4 ? 4 : available_valence;
     std::size_t type = available_valence_as_type ? available_valence : 1;
     std::size_t n = one_per_available_valence ? available_valence : 1;
     for (std::size_t i = 0; i < n; ++i) {
@@ -112,6 +115,7 @@ void PadAttachmentPoints(
       atom_idx = atoms_mask.find_next(atom_idx)) {
       const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
       int available_valence = AvailableValence(atom);
+      available_valence = available_valence > 4 ? 4 : available_valence;
       for (int i = 0; i < available_valence; ++i) {
         eligible_atom_indices.push_back(atom_idx);
       };
