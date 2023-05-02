@@ -102,14 +102,15 @@ std::shared_ptr<MolecularConstraints> MolecularConstraintsFactory(
     MolecularConstraints::BondConstraintType::Null,
   MolecularConstraints::EnvironmentConstraintType environment_constraint_type = 
     MolecularConstraints::EnvironmentConstraintType::Null,
-  const ChemicalDictionary* dictionary = nullptr,
-  unsigned environment_radius = 2) {
+  const ChemicalDictionary* dictionary = nullptr) {
   auto atom_constraints_generator = AtomConstraintGeneratorFactory(
     atom_constraint_type, dictionary);
   auto bond_constraint_generator = BondConstraintGeneratorFactory(
     bond_constraint_type, dictionary);
   auto environment_constraint_generator = EnvironmentConstraintGeneratorFactory(
     environment_constraint_type, dictionary);
+  unsigned environment_radius = 
+    dictionary ? dictionary->GetEnvironmentRadius() : 2;
   return std::shared_ptr<MolecularConstraints>(new MolecularConstraints(
     atom_constraints_generator,
     bond_constraint_generator,
@@ -189,8 +190,7 @@ void WrapMolecularConstraints() {
     python::arg("atom_constraint_type") = MolecularConstraints::AtomConstraintType::Null, 
     python::arg("bond_constraint_type") = MolecularConstraints::BondConstraintType::Null,
     python::arg("environment_constraint_type") = MolecularConstraints::EnvironmentConstraintType::Null,
-    python::arg("dictionary") = python::ptr((const ChemicalDictionary*) nullptr),
-    python::arg("environment_radius") = 2)))
+    python::arg("dictionary") = python::ptr((const ChemicalDictionary*) nullptr))))
   .def("GenerateAtomConstraints", GenerateAtomConstraints, (
     python::arg("molecule"), 
     python::arg("atom_constraint_type"),
