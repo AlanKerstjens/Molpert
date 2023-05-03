@@ -5,6 +5,7 @@
 #include "pyChemicalDictionary.hpp"
 #include "pyMolecularConstraints.hpp"
 #include "pyMoleculePerturber.hpp"
+#include "pyMoleculeHash.hpp"
 #include "pyAddons.hpp"
 #include <boost/python.hpp>
 
@@ -29,8 +30,6 @@ BOOST_PYTHON_MODULE(molpert) {
   python::def<Tag (*)(const RDKit::Bond*)>("GetBondTag", GetTag, (
     python::arg("bond")));
 
-  python::def("HashMolecule", HashMolecule, (python::arg("molecule")));
-
   WrapMolecularKeys();
   WrapCircularAtomicEnvironment();
   WrapMolecularPerturbations();
@@ -38,5 +37,6 @@ BOOST_PYTHON_MODULE(molpert) {
   WrapChemicalDictionary();
   WrapMolecularConstraints();
   WrapMoleculePerturber();
+  WrapMoleculeHash();
   WrapAddons();
 };
