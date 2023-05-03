@@ -118,46 +118,6 @@ std::shared_ptr<MolecularConstraints> MolecularConstraintsFactory(
     environment_radius));
 };
 
-void GenerateAtomConstraints(
-  MolecularConstraints& constraints,
-  const RDKit::ROMol& molecule,
-  MolecularConstraints::AtomConstraintType atom_constraint_type,
-  const ChemicalDictionary* dictionary = nullptr) {
-  auto atom_constraint_generator = AtomConstraintGeneratorFactory(
-    atom_constraint_type, dictionary);
-  if (!atom_constraint_generator) {
-    return;
-  };
-  constraints.GenerateAtomConstraints(molecule, atom_constraint_generator);
-};
-
-void GenerateBondConstraints(
-  MolecularConstraints& constraints,
-  const RDKit::ROMol& molecule,
-  MolecularConstraints::BondConstraintType bond_constraint_type,
-  const ChemicalDictionary* dictionary = nullptr) {
-  auto bond_constraint_generator = BondConstraintGeneratorFactory(
-    bond_constraint_type, dictionary);
-  if (!bond_constraint_generator) {
-    return;
-  };
-  constraints.GenerateBondConstraints(molecule, bond_constraint_generator);
-};
-
-void GenerateEnvironmentConstraints(
-  MolecularConstraints& constraints,
-  const RDKit::ROMol& molecule,
-  MolecularConstraints::EnvironmentConstraintType environment_constraint_type,
-  const ChemicalDictionary* dictionary = nullptr) {
-  auto environment_constraint_generator = EnvironmentConstraintGeneratorFactory(
-    environment_constraint_type, dictionary);
-  if (!environment_constraint_generator) {
-    return;
-  };
-  constraints.GenerateEnvironmentConstraints(
-    molecule, environment_constraint_generator);
-};
-
 void WrapMolecularConstraints() {
   FunctionConverter()
     .Register<bool(const AtomKey&)>()
@@ -191,46 +151,58 @@ void WrapMolecularConstraints() {
     python::arg("bond_constraint_type") = MolecularConstraints::BondConstraintType::Null,
     python::arg("environment_constraint_type") = MolecularConstraints::EnvironmentConstraintType::Null,
     python::arg("dictionary") = python::ptr((const ChemicalDictionary*) nullptr))))
-  .def("GenerateAtomConstraints", GenerateAtomConstraints, (
-    python::arg("molecule"), 
-    python::arg("atom_constraint_type"),
-    python::arg("dictionary") = python::ptr((const ChemicalDictionary*) nullptr)))
-  .def("GenerateBondConstraints", GenerateBondConstraints, (
-    python::arg("molecule"), 
-    python::arg("bond_constraint_type"),
-    python::arg("dictionary") = python::ptr((const ChemicalDictionary*) nullptr)))
-  .def("GenerateEnvironmentConstraints", GenerateEnvironmentConstraints, (
-    python::arg("molecule"), 
-    python::arg("environment_constraint_type"),
-    python::arg("dictionary") = python::ptr((const ChemicalDictionary*) nullptr)))
+  .def("GenerateAtomConstraint", &MolecularConstraints::GenerateAtomConstraint, (
+    python::arg("atom")))
+  .def("GenerateAtomConstraints", &MolecularConstraints::GenerateAtomConstraints, (
+    python::arg("molecule")))
+  .def("GenerateBondConstraint", &MolecularConstraints::GenerateBondConstraint, (
+    python::arg("bond")))
+  .def("GenerateBondConstraints", &MolecularConstraints::GenerateBondConstraints, (
+    python::arg("molecule")))
+  .def("GenerateEnvironmentConstraint", &MolecularConstraints::GenerateEnvironmentConstraint, (
+    python::arg("molecule"),
+    python::arg("atom"),
+    python::arg("recalculate_atom_hashes") = false))
+  .def("GenerateEnvironmentConstraints", &MolecularConstraints::GenerateEnvironmentConstraints, (
+    python::arg("molecule")))
   .def("GenerateConstraints", &MolecularConstraints::GenerateConstraints, (
     python::arg("molecule")))
   .def("SetAtomConstraint", &MolecularConstraints::SetAtomConstraint, (
     python::arg("atom_tag"), 
     python::arg("atom_constraint"), 
-    python::arg("replace") = true))
+    python::arg("replace") = true,
+    python::arg("make_static") = false))
   .def("SetBondConstraint", &MolecularConstraints::SetBondConstraint, (
     python::arg("bond_tag"), 
     python::arg("bond_constraint"), 
-    python::arg("replace") = true))
+    python::arg("replace") = true,
+    python::arg("make_static") = false))
   .def("SetEnvironmentConstraint", &MolecularConstraints::SetEnvironmentConstraint, (
     python::arg("atom_tag"), 
     python::arg("environment_constraint"), 
-    python::arg("replace") = true))
+    python::arg("replace") = true,
+    python::arg("make_static") = false))
   .def("UpdateConstraints", &MolecularConstraints::UpdateConstraints, (
     python::arg("molecule"),
     python::arg("perturbation")))
   .def("ClearAtomConstraint", &MolecularConstraints::ClearAtomConstraint, (
-    python::arg("atom_tag")))
+    python::arg("atom_tag"),
+    python::arg("clear_static") = true))
   .def("ClearBondConstraint", &MolecularConstraints::ClearBondConstraint, (
-    python::arg("bond_tag")))
+    python::arg("bond_tag"),
+    python::arg("clear_static") = true))
   .def("ClearEnvironmentConstraint", &MolecularConstraints::ClearEnvironmentConstraint, (
-    python::arg("atom_tag")))
-  .def("ClearAtomConstraints", &MolecularConstraints::ClearAtomConstraints)
-  .def("ClearBondConstraints", &MolecularConstraints::ClearBondConstraints)
-  .def("ClearEnvironmentConstraints", &MolecularConstraints::ClearEnvironmentConstraints)
+    python::arg("atom_tag"),
+    python::arg("clear_static") = true))
+  .def("ClearAtomConstraints", &MolecularConstraints::ClearAtomConstraints, (
+    python::arg("clear_static") = true))
+  .def("ClearBondConstraints", &MolecularConstraints::ClearBondConstraints, (
+    python::arg("clear_static") = true))
+  .def("ClearEnvironmentConstraints", &MolecularConstraints::ClearEnvironmentConstraints, (
+    python::arg("clear_static") = true))
   .def("ClearCyclicityConstraints", &MolecularConstraints::ClearCyclicityConstraints)
-  .def("ClearConstraints", &MolecularConstraints::ClearConstraints)
+  .def("ClearConstraints", &MolecularConstraints::ClearConstraints, (
+    python::arg("clear_static") = true))
   .def("Clear", &MolecularConstraints::Clear)
   .def<bool (MolecularConstraints::*)(Tag, const AtomKey&) const>(
     "IsAtomKeyAllowed", &MolecularConstraints::IsAllowed, (

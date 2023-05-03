@@ -32,9 +32,11 @@ public:
   > EnvironmentConstraintGenerator;
 
 private:
-  std::map<Tag, AtomConstraint> atom_constraints;
-  std::map<Tag, BondConstraint> bond_constraints;
-  std::map<Tag, EnvironmentConstraint> environment_constraints;
+  // The bool in the value is a "static" flag.
+  // When set the constraint won't be settable or updateable.
+  std::map<Tag, std::pair<AtomConstraint, bool>> atom_constraints;
+  std::map<Tag, std::pair<BondConstraint, bool>> bond_constraints;
+  std::map<Tag, std::pair<EnvironmentConstraint, bool>> environment_constraints;
   AtomConstraintGenerator atom_constraint_generator;
   BondConstraintGenerator bond_constraint_generator;
   EnvironmentConstraintGenerator environment_constraint_generator;
@@ -47,113 +49,93 @@ private:
   bool SetConstraint(
     Tag tag,
     const Constraint& constraint,
-    std::map<Tag, Constraint>& constraints,
-    bool replace = true) {
-    // If we are provided a null constraint we either clear the existing one or
-    // do nothing at all. This ensures we never store null constraints.
-    if (!constraint) {
-      if (replace) {
-        return constraints.erase(tag);
+    std::map<Tag, std::pair<Constraint, bool>>& constraints,
+    bool replace = true,
+    bool make_static = false) const {
+    // Check if we already have a constraint for this Tag.
+    auto it = constraints.find(tag);
+    // If we don't and the constraint is not null we set it.
+    if (it == constraints.cend()) {
+      if (!constraint) {
+        return false;
       };
-      return false;
-    };
-    // Try to insert a new constraint.
-    auto [it, emplaced] = constraints.emplace(tag, constraint);
-    if (emplaced) {
+      constraints.try_emplace(tag, constraint, make_static);
       return true;
     };
-    if (!replace) {
+    // If we do, check if we are allowed to change it.
+    if (!replace || it->second.second) {
       return false;
     };
-    // If we already had a constraint for the tag, if possible, replace it.
-    it->second = constraint;
+    // If we are but the new constraint is null we erase the existing one.
+    if (!constraint) {
+      constraints.erase(it);
+      return true;
+    };
+    // Otherwise replace it with the new constraint.
+    it->second = {constraint, make_static};
     return true;
   };
 
   template <class Constraint>
   const Constraint* GetConstraint(
     Tag tag,
-    const std::map<Tag, Constraint>& constraints) const {
-    typename std::map<Tag, Constraint>::const_iterator it = constraints.find(tag);
+    const std::map<Tag, std::pair<Constraint, bool>>& constraints) const {
+    auto it = constraints.find(tag);
     // Return a null constraint if the tag has no constraints.
-    return it != constraints.cend() ? &it->second : nullptr;
+    return it != constraints.cend() ? &it->second.first : nullptr;
   };
 
-  std::pair<std::shared_ptr<const AtomConstraint>, bool> UpdatedAtomConstraint(
-    Tag atom_tag,
-    const AtomKeyChange& atom_key_change) const {
-    std::shared_ptr<const AtomConstraint> updated_atom_constraint;
-    // If no constraint generator was defined we can't update anything.
-    // Return the current constraint.
-    if (!atom_constraint_generator) {
-      updated_atom_constraint.reset(
-        GetConstraint(atom_tag, atom_constraints), boost::null_deleter());
-      return {updated_atom_constraint, false};
+  template <class Constraint, class KeyChange, class ConstraintGenerator>
+  std::pair<std::shared_ptr<const Constraint>, bool> UpdatedConstraint(
+    Tag tag,
+    const std::map<Tag, std::pair<Constraint, bool>>& constraints,
+    const KeyChange& key_change,
+    const ConstraintGenerator& constraint_generator) const {
+    std::shared_ptr<const Constraint> updated_constraint;
+    // Check if we already have a constraint for this tag.
+    const Constraint* constraint = nullptr;
+    bool is_static = false;
+    auto it = constraints.find(tag);
+    if (it != constraints.cend()) {
+      constraint = &it->second.first;
+      is_static = it->second.second;
     };
-    // Try to generate a new constraint.
-    std::optional<AtomConstraint> new_atom_constraint =
-      atom_constraint_generator(atom_key_change);
+    // If the existing constraint is static or we don't have a constraint
+    // generator we return the existing constraint, which may be null.
+    if (is_static || !constraint_generator) {
+      updated_constraint.reset(constraint, boost::null_deleter());
+      return {updated_constraint, false};
+    };
+    // If not, we can try generating a new constraint.
+    std::optional<Constraint> new_constraint = constraint_generator(key_change);
     // If no new constraint was generated we don't update anything.
-    // Return the current constraint.
-    if (!new_atom_constraint) {
-      updated_atom_constraint.reset(
-        GetConstraint(atom_tag, atom_constraints), boost::null_deleter());
-      return {updated_atom_constraint, false};
+    if (!new_constraint) {
+      updated_constraint.reset(constraint, boost::null_deleter());
+      return {updated_constraint, false};
     };
     // If a non-null constraint was generated take ownership of it.
-    if (*new_atom_constraint) {
-      updated_atom_constraint.reset(
-        new AtomConstraint(std::move(*new_atom_constraint)));
+    if (*new_constraint) {
+      updated_constraint.reset(new Constraint(std::move(*new_constraint)));
     };
     // Return the new constraint.
-    return {updated_atom_constraint, true};
+    return {updated_constraint, true};
   };
 
-  std::pair<std::shared_ptr<const BondConstraint>, bool> UpdatedBondConstraint(
-    Tag bond_tag,
-    const BondKeyChange& bond_key_change) const {
-    std::shared_ptr<const BondConstraint> updated_bond_constraint;
-    if (!bond_constraint_generator) {
-      updated_bond_constraint.reset(
-        GetConstraint(bond_tag, bond_constraints), boost::null_deleter());
-      return {updated_bond_constraint, false};
+  template <class Constraint>
+  bool ClearConstraint(
+    Tag tag,
+    std::map<Tag, std::pair<Constraint, bool>>& constraints,
+    bool clear_static = true) const {
+    auto it = constraints.find(tag);
+    if (it == constraints.cend()) {
+      return false;
     };
-    std::optional<BondConstraint> new_bond_constraint =
-      bond_constraint_generator(bond_key_change);
-    if (!new_bond_constraint) {
-      updated_bond_constraint.reset(
-        GetConstraint(bond_tag, bond_constraints), boost::null_deleter());
-      return {updated_bond_constraint, false};
+    bool is_static = it->second.second;
+    if (is_static && !clear_static) {
+      return false;
     };
-    if (*new_bond_constraint) {
-      updated_bond_constraint.reset(
-        new BondConstraint(std::move(*new_bond_constraint)));
-    };
-    return {updated_bond_constraint, true};
-  };
-
-  std::pair<std::shared_ptr<const EnvironmentConstraint>, bool> 
-  UpdatedEnvironmentConstraint(
-    Tag atom_tag,
-    const EnvironmentKeyChange& environment_key_change) const {
-    std::shared_ptr<const EnvironmentConstraint> updated_environment_constraint;
-    if (!environment_constraint_generator) {
-      updated_environment_constraint.reset(
-        GetConstraint(atom_tag, environment_constraints), boost::null_deleter());
-      return {updated_environment_constraint, false};
-    };
-    std::optional<EnvironmentConstraint> new_environment_constraint =
-      environment_constraint_generator(environment_key_change);
-    if (!new_environment_constraint) {
-      updated_environment_constraint.reset(
-        GetConstraint(atom_tag, environment_constraints), boost::null_deleter());
-      return {updated_environment_constraint, false};
-    };
-    if (*new_environment_constraint) {
-      updated_environment_constraint.reset(
-        new EnvironmentConstraint(std::move(*new_environment_constraint)));
-    };
-    return {updated_environment_constraint, true};
+    constraints.erase(it);
+    return true;
   };
 
   bool CyclicityConstraintsSatisfied(
@@ -182,92 +164,31 @@ public:
     environment_constraint_generator(environment_constraint_generator),
     environment_generator(environment_radius) {};
 
-  void GenerateAtomConstraints(
-    const RDKit::ROMol& molecule,
-    const AtomConstraintGenerator& atom_constraint_gen) {
-    if (!atom_constraint_gen) {
-      return;
-    };
-    atom_constraints.clear();
-    for (const RDKit::Atom* atom : molecule.atoms()) {
-      Tag atom_tag = GetTag(atom);
-      std::optional<AtomConstraint> atom_constraint = atom_constraint_gen(
-        {NULL_ATOM_KEY, AtomKey(atom)});
-      if (!atom_constraint) {
-        continue;
-      };
-      SetConstraint(atom_tag, std::move(*atom_constraint), atom_constraints);
-    };
-  };
-
-  void GenerateBondConstraints(
-    const RDKit::ROMol& molecule,
-    const BondConstraintGenerator& bond_constraint_gen) {
-    if (!bond_constraint_gen) {
-      return;
-    };
-    bond_constraints.clear();
-    for (const RDKit::Bond* bond : molecule.bonds()) {
-      Tag bond_tag = GetTag(bond);
-      std::optional<BondConstraint> bond_constraint = bond_constraint_gen(
-        {NULL_BOND_KEY, BondKey(bond)});
-      if (!bond_constraint) {
-        continue;
-      };
-      SetConstraint(bond_tag, std::move(*bond_constraint), bond_constraints);
-    };
-  };
-
-  void GenerateEnvironmentConstraints(
-    const RDKit::ROMol& molecule,
-    const EnvironmentConstraintGenerator& environment_constraint_gen) {
-    if (!environment_constraint_gen) {
-      return;
-    };
-    environment_constraints.clear();
-    for (const RDKit::Atom* atom : molecule.atoms()) {
-      Tag atom_tag = GetTag(atom);
-      // Force recalculation of the atom hashes, as the cached values may
-      // reference an old state of the molecule.
-      environment_generator.CalculateAtomHashes(molecule);
-      EnvironmentKey environment_key = environment_generator.Key(atom);
-      std::optional<EnvironmentConstraint> environment_constraint = 
-        environment_constraint_gen(
-          {NULL_ENVIRONMENT_KEY, environment_key});
-      if (!environment_constraint) {
-        continue;
-      };
-      SetConstraint(
-        atom_tag, std::move(*environment_constraint), environment_constraints);
-    };
-  };
-
-  void GenerateConstraints(const RDKit::ROMol& molecule) {
-    GenerateAtomConstraints(molecule, atom_constraint_generator);
-    GenerateBondConstraints(molecule, bond_constraint_generator);
-    GenerateEnvironmentConstraints(molecule, environment_constraint_generator);
-  };
-
   bool SetAtomConstraint(
     Tag atom_tag,
     const AtomConstraint& atom_constraint,
-    bool replace = true) {
-    return SetConstraint(atom_tag, atom_constraint, atom_constraints, replace);
+    bool replace = true,
+    bool make_static = false) {
+    return SetConstraint(
+      atom_tag, atom_constraint, atom_constraints, replace, make_static);
   };
 
   bool SetBondConstraint(
     Tag bond_tag,
     const BondConstraint& bond_constraint,
-    bool replace = true) {
-    return SetConstraint(bond_tag, bond_constraint, bond_constraints, replace);
+    bool replace = true,
+    bool make_static = false) {
+    return SetConstraint(
+      bond_tag, bond_constraint, bond_constraints, replace, make_static);
   };
 
   bool SetEnvironmentConstraint(
     Tag atom_tag,
     const EnvironmentConstraint& environment_constraint,
-    bool replace = true) {
-    return SetConstraint(
-      atom_tag, environment_constraint, environment_constraints, replace);
+    bool replace = true,
+    bool make_static = false) {
+    return SetConstraint(atom_tag, 
+      environment_constraint, environment_constraints, replace, make_static);
   };
 
   void SetMinCycleSize(unsigned new_min_cycle_size) {
@@ -278,44 +199,133 @@ public:
     max_cycle_size = new_max_cycle_size;
   };
 
-  bool UpdateAtomConstraint(Tag atom_tag, const AtomKeyChange& atom_key_change) {
+  void GenerateAtomConstraint(const RDKit::Atom* atom) {
     if (!atom_constraint_generator) {
-      return false;
+      return;
     };
-    std::optional<AtomConstraint> new_atom_constraint = 
-      atom_constraint_generator(atom_key_change);
-    if (!new_atom_constraint) {
-      return false;
+    std::optional<AtomConstraint> atom_constraint = atom_constraint_generator(
+      {NULL_ATOM_KEY, AtomKey(atom)});
+    if (!atom_constraint) {
+      return;
     };
-    return SetConstraint(
-      atom_tag, std::move(*new_atom_constraint), atom_constraints);
+    SetAtomConstraint(GetTag(atom), std::move(*atom_constraint));
   };
 
-  bool UpdateBondConstraint(Tag bond_tag, const BondKeyChange& bond_key_change) {
+  void GenerateAtomConstraints(const RDKit::ROMol& molecule) {
+    if (!atom_constraint_generator) {
+      return;
+    };
+    for (const RDKit::Atom* atom : molecule.atoms()) {
+      GenerateAtomConstraint(atom);
+    };
+  };
+
+  void GenerateBondConstraint(const RDKit::Bond* bond) {
     if (!bond_constraint_generator) {
+      return;
+    };
+    std::optional<BondConstraint> bond_constraint = bond_constraint_generator(
+      {NULL_BOND_KEY, BondKey(bond)});
+    if (!bond_constraint) {
+      return;
+    };
+    SetBondConstraint(GetTag(bond), std::move(*bond_constraint));
+  };
+
+  void GenerateBondConstraints(const RDKit::ROMol& molecule) {
+    if (!bond_constraint_generator) {
+      return;
+    };
+    for (const RDKit::Bond* bond : molecule.bonds()) {
+      GenerateBondConstraint(bond);
+    };
+  };
+
+  void GenerateEnvironmentConstraint(
+    const RDKit::ROMol& molecule,
+    const RDKit::Atom* atom,
+    bool recalculate_atom_hashes = false) {
+    if (!environment_constraint_generator) {
+      return;
+    };
+    if (recalculate_atom_hashes) {
+      environment_generator.CalculateAtomHashes(molecule);
+    };
+    std::optional<EnvironmentConstraint> environment_constraint = 
+      environment_constraint_generator(
+        {NULL_ENVIRONMENT_KEY, environment_generator.Key(atom)});
+    if (!environment_constraint) {
+      return;
+    };
+    SetEnvironmentConstraint(GetTag(atom), std::move(*environment_constraint));
+  };
+
+  void GenerateEnvironmentConstraints(const RDKit::ROMol& molecule) {
+    if (!environment_constraint_generator) {
+      return;
+    };
+    environment_generator.CalculateAtomHashes(molecule);
+    for (const RDKit::Atom* atom : molecule.atoms()) {
+      GenerateEnvironmentConstraint(molecule, atom, false);
+    };
+  };
+
+  void GenerateConstraints(const RDKit::ROMol& molecule) {
+    GenerateAtomConstraints(molecule);
+    GenerateBondConstraints(molecule);
+    GenerateEnvironmentConstraints(molecule);
+  };
+
+  std::pair<std::shared_ptr<const AtomConstraint>, bool>
+  UpdatedAtomConstraint(
+    Tag atom_tag, const AtomKeyChange& atom_key_change) const {
+    return UpdatedConstraint(
+      atom_tag, atom_constraints, atom_key_change, atom_constraint_generator);
+  };
+
+  std::pair<std::shared_ptr<const BondConstraint>, bool>
+  UpdatedBondConstraint(
+    Tag bond_tag, const BondKeyChange& bond_key_change) const {
+    return UpdatedConstraint(
+      bond_tag, bond_constraints, bond_key_change, bond_constraint_generator);
+  };
+
+  std::pair<std::shared_ptr<const EnvironmentConstraint>, bool>
+  UpdatedEnvironmentConstraint(
+    Tag atom_tag, const EnvironmentKeyChange& environment_key_change) const {
+    return UpdatedConstraint(atom_tag, environment_constraints, 
+      environment_key_change, environment_constraint_generator);
+  };
+
+  bool UpdateAtomConstraint(
+    Tag atom_tag, const AtomKeyChange& atom_key_change) {
+    auto [atom_constraint, updated] = UpdatedAtomConstraint(
+      atom_tag, atom_key_change);
+    if (!updated) {
       return false;
     };
-    std::optional<BondConstraint> new_bond_constraint =
-      bond_constraint_generator(bond_key_change);
-    if (!new_bond_constraint) {
-      return false;
+    return SetAtomConstraint(atom_tag, std::move(*atom_constraint));
+  };
+
+  bool UpdateBondConstraint(
+    Tag bond_tag, const BondKeyChange& bond_key_change) {
+    auto [bond_constraint, updated] = UpdatedBondConstraint(
+      bond_tag, bond_key_change);
+    if (!updated) {
+      false;
     };
-    return SetConstraint(
-      bond_tag, std::move(*new_bond_constraint), bond_constraints);
+    return SetBondConstraint(bond_tag, std::move(*bond_constraint));
   };
 
   bool UpdateEnvironmentConstraint(
     Tag atom_tag, const EnvironmentKeyChange& environment_key_change) {
-    if (!environment_constraint_generator) {
-      return false;
+    auto [environment_constraint, updated] = UpdatedEnvironmentConstraint(
+      atom_tag, environment_key_change);
+    if (!updated) {
+      false;
     };
-    std::optional<EnvironmentConstraint> new_environment_constraint = 
-      environment_constraint_generator(environment_key_change);
-    if (!new_environment_constraint) {
-      return false;
-    };
-    return SetConstraint(
-      atom_tag, std::move(*new_environment_constraint), environment_constraints);
+    return SetEnvironmentConstraint(
+      atom_tag, std::move(*environment_constraint));
   };
 
   bool UpdateConstraints(
@@ -347,28 +357,59 @@ public:
     return n_updated_keys;
   };
 
-  bool ClearAtomConstraint(Tag atom_tag) {
-    return atom_constraints.erase(atom_tag);
+  bool ClearAtomConstraint(Tag atom_tag, bool clear_static = true) {
+    return ClearConstraint(atom_tag, atom_constraints, clear_static);
   };
 
-  bool ClearBondConstraint(Tag bond_tag) {
-    return bond_constraints.erase(bond_tag);
+  bool ClearBondConstraint(Tag bond_tag, bool clear_static = true) {
+    return ClearConstraint(bond_tag, bond_constraints, clear_static);
   };
 
-  bool ClearEnvironmentConstraint(Tag atom_tag) {
-    return environment_constraints.erase(atom_tag);
+  bool ClearEnvironmentConstraint(Tag atom_tag, bool clear_static = true) {
+    return ClearConstraint(atom_tag, environment_constraints, clear_static);
   };
 
-  void ClearAtomConstraints() {
-    atom_constraints.clear();
+  void ClearAtomConstraints(bool clear_static = true) {
+    if (clear_static) {
+      return atom_constraints.clear();
+    };
+    for (auto it = atom_constraints.cbegin(); it != atom_constraints.cend();) {
+      bool is_static = it->second.second;
+      if (!is_static) {
+        it = atom_constraints.erase(it);
+      } else {
+        ++it;
+      };
+    };
   };
 
-  void ClearBondConstraints() {
-    bond_constraints.clear();
+  void ClearBondConstraints(bool clear_static = true) {
+    if (clear_static) {
+      return bond_constraints.clear();
+    };
+    for (auto it = bond_constraints.cbegin(); it != bond_constraints.cend();) {
+      bool is_static = it->second.second;
+      if (!is_static) {
+        it = bond_constraints.erase(it);
+      } else {
+        ++it;
+      };
+    };
   };
 
-  void ClearEnvironmentConstraints() {
-    environment_constraints.clear();
+  void ClearEnvironmentConstraints(bool clear_static = true) {
+    if (clear_static) {
+      return environment_constraints.clear();
+    };
+    for (auto it = environment_constraints.cbegin();
+      it != environment_constraints.cend();) {
+      bool is_static = it->second.second;
+      if (!is_static) {
+        it = environment_constraints.erase(it);
+      } else {
+        ++it;
+      };
+    };
   };
 
   void ClearCyclicityConstraints() {
@@ -376,10 +417,10 @@ public:
     max_cycle_size = std::numeric_limits<unsigned>::max();
   };
 
-  void ClearConstraints() {
-    atom_constraints.clear();
-    bond_constraints.clear();
-    environment_constraints.clear();
+  void ClearConstraints(bool clear_static = true) {
+    ClearAtomConstraints(clear_static);
+    ClearBondConstraints(clear_static);
+    ClearEnvironmentConstraints(clear_static);
     ClearCyclicityConstraints();
   };
 
@@ -458,21 +499,21 @@ public:
   };
 
   bool IsAllowed(Tag atom_tag, const AtomKeyChange& atom_key_change) const {
-    auto [atom_constraint, updated] = 
-      UpdatedAtomConstraint(atom_tag, atom_key_change);
+    auto [atom_constraint, updated] = UpdatedAtomConstraint(
+      atom_tag, atom_key_change);
     return !atom_constraint || (*atom_constraint)(atom_key_change.second);
   };
 
   bool IsAllowed(Tag bond_tag, const BondKeyChange& bond_key_change) const {
-    auto [bond_constraint, updated] = 
-      UpdatedBondConstraint(bond_tag, bond_key_change);
+    auto [bond_constraint, updated] = UpdatedBondConstraint(
+      bond_tag, bond_key_change);
     return !bond_constraint || (*bond_constraint)(bond_key_change.second);
   };
 
   bool IsAllowed(
     Tag atom_tag, const EnvironmentKeyChange& environment_key_change) const {
-    auto [environment_constraint, updated] = 
-      UpdatedEnvironmentConstraint(atom_tag, environment_key_change);
+    auto [environment_constraint, updated] = UpdatedEnvironmentConstraint(
+      atom_tag, environment_key_change);
     return !environment_constraint ||
       (*environment_constraint)(environment_key_change.second);
   };
@@ -521,7 +562,7 @@ public:
     bool is_allowed = 
       !atom_constraint || (*atom_constraint)(atom_key_change.second);
     if (is_allowed && updated) {
-      SetConstraint(atom_tag, std::move(*atom_constraint), atom_constraints);
+      SetAtomConstraint(atom_tag, std::move(*atom_constraint));
     };
     return is_allowed;
   };
@@ -532,7 +573,7 @@ public:
     bool is_allowed = 
       !bond_constraint || (*bond_constraint)(bond_key_change.second);
     if (is_allowed && updated) {
-      SetConstraint(bond_tag, std::move(*bond_constraint), bond_constraints);
+      SetBondConstraint(bond_tag, std::move(*bond_constraint));
     };
     return is_allowed;
   };
@@ -544,8 +585,7 @@ public:
     bool is_allowed = !environment_constraint ||
       (*environment_constraint)(environment_key_change.second);
     if (is_allowed && updated) {
-      SetConstraint(
-        atom_tag, std::move(*environment_constraint), environment_constraints);
+      SetEnvironmentConstraint(atom_tag, std::move(*environment_constraint));
     };
     return is_allowed;
   };
@@ -613,13 +653,13 @@ public:
       return false;
     };
     for (const auto& [atom_tag, atom_constraint] : updated_atom_constraints) {
-      SetConstraint(atom_tag, std::move(*atom_constraint), atom_constraints);
+      SetAtomConstraint(atom_tag, std::move(*atom_constraint));
     };
     for (const auto& [bond_tag, bond_constraint] : updated_bond_constraints) {
-      SetConstraint(bond_tag, std::move(*bond_constraint), bond_constraints);
+      SetBondConstraint(bond_tag, std::move(*bond_constraint));
     };
     for (const auto& [atom_tag, envc] : updated_environment_constraints) {
-      SetConstraint(atom_tag, std::move(*envc), environment_constraints);
+      SetEnvironmentConstraint(atom_tag, std::move(*envc));
     };
     return true;
   };
