@@ -253,11 +253,12 @@ void WrapMoleculePerturber() {
 
   python::class_<MoleculePerturber>(
     "MoleculePerturber",
-    python::init<bool, bool, bool, bool>((
-      python::arg("use_aromatic_bonds") = false,
+    python::init<bool, bool, bool, bool, bool>((
       python::arg("use_chembl_distribution") = true,
-      python::arg("cyclicity_based_atomic_number_weights") = false,
-      python::arg("cyclicity_based_bond_type_weights") = false)))
+      python::arg("use_aromatic_bonds") = false,
+      python::arg("acyclic_can_be_aromatic") = false,
+      python::arg("cyclicity_based_atomic_numbers") = false,
+      python::arg("cyclicity_based_bond_types") = false)))
 
     .def<python::object (const MoleculePerturber&, const RDKit::ROMol&, AtomIdx, std::mt19937&, const MolecularConstraints*)>(
       "ChangeAtomicNumber", ChangeAtomicNumber, (

@@ -85,9 +85,9 @@ public:
   bool assess_distances_with_distance_matrix = false;
 
   // Atomic number change settings
-  bool cyclicity_based_atomic_numbers = true;
+  bool cyclicity_based_atomic_numbers = false;
   // Bond type change settings
-  bool cyclicity_based_bond_types = true;
+  bool cyclicity_based_bond_types = false;
   // These settings don't apply to atom/bond insertions because it is difficult
   // to predict a priori if the newly added atom or bond will be part of a cycle
   // or not.
@@ -384,31 +384,22 @@ private:
 
 public:
   MoleculePerturber(
-    bool use_aromatic_bonds = false,
     bool use_chembl_distribution = true,
-    bool cyclicity_based_atomic_number_weights = true,
-    bool cyclicity_based_bond_type_weights = true) {
-    if (use_aromatic_bonds) {
-      SetAromaticProperties();
-    };
-    if (use_chembl_distribution) {
-      SetChEMBLProperties(
-        use_aromatic_bonds,
-        cyclicity_based_atomic_number_weights,
-        cyclicity_based_bond_type_weights);
-    };
-  };
-
-  void SetAromaticProperties() {
-    ring_bond_types = {
-        RDKit::Bond::SINGLE, RDKit::Bond::DOUBLE, RDKit::Bond::AROMATIC};
-    ring_bond_types_weights = {1, 1, 1};
-  };
-
-  void SetChEMBLProperties(
     bool use_aromatic_bonds = false,
-    bool cyclicity_based_atomic_number_weights = true,
-    bool cyclicity_based_bond_type_weights = true) {
+    bool acyclic_can_be_aromatic = false,
+    bool cyclicity_based_atomic_numbers = false,
+    bool cyclicity_based_bond_types = false) :
+    cyclicity_based_atomic_numbers(cyclicity_based_atomic_numbers), 
+    cyclicity_based_bond_types(cyclicity_based_bond_types) {
+    if (use_chembl_distribution) {
+      SetChEMBLProperties();
+    };
+    if (use_aromatic_bonds) {
+      SetAromaticProperties(acyclic_can_be_aromatic, use_chembl_distribution);
+    };
+  };
+
+  void SetChEMBLProperties() {
     // The default value for atom and bond properties is the most frequent value.
     // The probability of changing a property is proportional to how often said
     // property deviates from its default value. We multiply the latter value by
@@ -433,7 +424,8 @@ public:
     formal_charges = {0, 1, -1};
     n_explicit_hydrogens = {0, 1};
     bond_types = {RDKit::Bond::SINGLE, RDKit::Bond::DOUBLE, RDKit::Bond::TRIPLE};
-    if (cyclicity_based_atomic_number_weights) {
+    ring_bond_types = {RDKit::Bond::SINGLE, RDKit::Bond::DOUBLE};
+    if (cyclicity_based_atomic_numbers) {
       atomic_numbers_weights =
         {10010308, 5369046, 2200788, 719854, 414403, 413065, 85966, 36870, 11771};
     } else {
@@ -443,15 +435,33 @@ public:
     ring_atomic_numbers_weights = {29031741, 3621208, 686465, 290604};
     formal_charges_weights = {52682232, 121749, 100139};
     n_explicit_hydrogens_weights = {51251210, 1652859};
-    if (cyclicity_based_bond_type_weights) {
+    if (cyclicity_based_bond_types) {
       bond_types_weights = {18642643, 3488616, 120889};
     } else {
       bond_types_weights = {40892139, 16473946, 121206};
     };
     ring_bond_types_weights = {22249495, 12985329};
-    if (use_aromatic_bonds) {
-      SetAromaticProperties();
+  };
+
+  void SetAromaticProperties(
+    bool acyclic_can_be_aromatic = false,
+    bool use_chembl_distribution = true) {
+    if (acyclic_can_be_aromatic) {
+      bond_types = {
+        RDKit::Bond::SINGLE, RDKit::Bond::DOUBLE, 
+        RDKit::Bond::TRIPLE, RDKit::Bond::AROMATIC};
+      if (use_chembl_distribution) {
+        bond_types_weights = {28149153, 3730960, 121206, 25485971};
+      } else {
+        bond_types_weights = {1, 1, 1, 1};
+      };
+    };
+    ring_bond_types = {
+        RDKit::Bond::SINGLE, RDKit::Bond::DOUBLE, RDKit::Bond::AROMATIC};
+    if (use_chembl_distribution) {
       ring_bond_types_weights = {9506510, 242344, 25485971};
+    } else {
+      ring_bond_types_weights = {1, 1, 1};
     };
   };
 
