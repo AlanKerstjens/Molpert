@@ -498,6 +498,8 @@ void WrapMoleculePerturber() {
 
     .def_readwrite("bond_insertion_min_distance_partner", &MoleculePerturber::bond_insertion_min_distance_partner)
     .def_readwrite("bond_insertion_max_distance_partner", &MoleculePerturber::bond_insertion_max_distance_partner)
+    .def_readwrite("bond_insertion_max_atom_n_rings_membership", &MoleculePerturber::bond_insertion_max_atom_n_rings_membership)
+    
     .def_readwrite("bond_insertion_randomize_bond_type", &MoleculePerturber::bond_insertion_randomize_bond_type)
     .def_readwrite("bond_insertion_iterate_bond_types", &MoleculePerturber::bond_insertion_iterate_bond_types)
 

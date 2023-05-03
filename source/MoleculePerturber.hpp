@@ -123,6 +123,7 @@ public:
   // Bond insertion settings
   unsigned bond_insertion_min_distance_partner = 2;
   unsigned bond_insertion_max_distance_partner = max_unsigned;
+  unsigned bond_insertion_max_atom_n_rings_membership = max_unsigned;
   // Bond insertion settings (stochastic overloads)
   bool bond_insertion_randomize_bond_type = true;
   // Bond insertion settings (deterministic overloads)
@@ -265,6 +266,25 @@ private:
     return atom_mask;
   };
 
+  boost::dynamic_bitset<> RingMembershipMask(
+    const RDKit::ROMol& molecule,
+    unsigned min_n_rings = 0,
+    unsigned max_n_rings = 1) const {
+    const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+    if (!ring_info->isInitialized()) {
+      RDKit::MolOps::findSSSR(molecule);
+    };
+    std::size_t n_atoms = molecule.getNumAtoms();
+    boost::dynamic_bitset<> atom_mask (n_atoms);
+    for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
+      unsigned n_rings = ring_info->numAtomRings(atom_idx);
+      if (n_rings >= min_n_rings && n_rings <= max_n_rings) {
+        atom_mask.set(atom_idx);
+      };
+    };
+    return atom_mask;
+  };
+
   boost::dynamic_bitset<> BondingPartnerMask(
     const RDKit::ROMol& molecule,
     AtomIdx begin_atom_idx) const {
@@ -281,6 +301,10 @@ private:
       };
     } else {
       atom_mask.set();
+    };
+    if (bond_insertion_max_atom_n_rings_membership < max_unsigned) {
+      atom_mask &= RingMembershipMask(
+        molecule, 0, bond_insertion_max_atom_n_rings_membership - 1);
     };
     const RDKit::Atom* atom = molecule.getAtomWithIdx(begin_atom_idx);
     for (const RDKit::Atom* neighbor : molecule.atomNeighbors(atom)) {
@@ -1153,8 +1177,18 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    boost::dynamic_bitset<> candidate_atom_mask (molecule.getNumAtoms());
+    candidate_atom_mask.set();
+    if (bond_insertion_max_atom_n_rings_membership < max_unsigned) {
+      candidate_atom_mask = RingMembershipMask(
+        molecule, 0, bond_insertion_max_atom_n_rings_membership - 1);
+    };
     for (std::size_t begin_atom_idx : ShuffledAtomIndices(molecule, prng)) {
-      auto perturbation = InsertBond(molecule, begin_atom_idx, prng, constraints);
+      if (!candidate_atom_mask[begin_atom_idx]) {
+        continue;
+      };
+      auto perturbation = InsertBond(
+        molecule, begin_atom_idx, prng, constraints);
       if (perturbation) {
         return perturbation;
       };
@@ -1203,7 +1237,15 @@ public:
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr) const {
     std::size_t n_atoms = molecule.getNumAtoms();
-    for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
+    boost::dynamic_bitset<> candidate_atom_mask (n_atoms);
+    candidate_atom_mask.set();
+    if (bond_insertion_max_atom_n_rings_membership < max_unsigned) {
+      candidate_atom_mask = RingMembershipMask(
+        molecule, 0, bond_insertion_max_atom_n_rings_membership - 1);
+    };
+    for (std::size_t atom_idx = candidate_atom_mask.find_first();
+      atom_idx != boost::dynamic_bitset<>::npos;
+      atom_idx = candidate_atom_mask.find_next(atom_idx)) {
       BondInsertions(queue, molecule, atom_idx, constraints);
     };
   };

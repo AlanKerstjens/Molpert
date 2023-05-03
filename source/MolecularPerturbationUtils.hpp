@@ -290,7 +290,7 @@ void CorrectAromaticity(RDKit::RWMol& molecule) {
 
 void CorrectHydrogenCounts(RDKit::RWMol& molecule) {
   // Allow the RDKit to recalculate the number of implicit hydrogens. For this 
-  // to work to properly we must remove all explicit hydrogens and ensure that
+  // to work properly we must remove all explicit hydrogens and ensure that
   // all atoms are labeled as potentially implicit hydrogen baring.
   for (RDKit::Atom* atom : molecule.atoms()) {
     atom->setNumExplicitHs(0);
