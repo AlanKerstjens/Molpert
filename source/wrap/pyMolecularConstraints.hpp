@@ -244,10 +244,21 @@ void WrapMolecularConstraints() {
   .def("HasCyclicityConstraints", &MolecularConstraints::HasCyclicityConstraints)
   .def("__bool__", &MolecularConstraints::operator bool)
   .def("__len__", &MolecularConstraints::Size)
-  .add_property("min_cycle_size", &MolecularConstraints::GetMinCycleSize, 
+  .add_property("min_n_cycles",
+    &MolecularConstraints::GetMinNCycles, 
+    &MolecularConstraints::SetMinNCycles)
+  .add_property("max_n_cycles",
+    &MolecularConstraints::GetMaxNCycles, 
+    &MolecularConstraints::SetMaxNCycles)
+  .add_property("min_cycle_size",
+    &MolecularConstraints::GetMinCycleSize, 
     &MolecularConstraints::SetMinCycleSize)
-  .add_property("max_cycle_size", &MolecularConstraints::GetMaxCycleSize, 
+  .add_property("max_cycle_size",
+    &MolecularConstraints::GetMaxCycleSize, 
     &MolecularConstraints::SetMaxCycleSize)
+  .add_property("max_atom_cycles_membership",
+    &MolecularConstraints::GetMaxAtomCyclesMembership, 
+    &MolecularConstraints::SetMaxAtomCyclesMembership)
   .add_property("environment_radius", &MolecularConstraints::GetEnvironmentRadius);
 };
 

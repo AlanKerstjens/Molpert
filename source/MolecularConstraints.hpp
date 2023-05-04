@@ -41,8 +41,12 @@ private:
   BondConstraintGenerator bond_constraint_generator;
   EnvironmentConstraintGenerator environment_constraint_generator;
   CircularAtomicEnvironmentGenerator environment_generator;
+  static const unsigned max_unsigned = std::numeric_limits<unsigned>::max();
+  unsigned min_n_cycles = 0;
+  unsigned max_n_cycles = max_unsigned;
   unsigned min_cycle_size = 3;
-  unsigned max_cycle_size = std::numeric_limits<unsigned>::max();
+  unsigned max_cycle_size = max_unsigned;
+  unsigned max_atom_cycles_membership = max_unsigned;
 
 private:
   template <class Constraint>
@@ -140,12 +144,37 @@ private:
 
   bool CyclicityConstraintsSatisfied(
     const MolecularGraphProjection& projection) const {
-    if (HasCyclicityConstraints()) {
-      std::vector<boost::dynamic_bitset<>> mcb = projection.MinimumCycleBasis();
+    if (!HasCyclicityConstraints()) {
+      return true;
+    };
+    std::vector<boost::dynamic_bitset<>> mcb = projection.MinimumCycleBasis();
+    if (mcb.empty()) {
+      if (min_n_cycles > 0) {
+        return false;
+      };
+      return true;
+    };
+    if (mcb.size() > max_n_cycles) {
+      return false;
+    };
+    if (min_cycle_size > 3 || max_cycle_size < max_unsigned) {
       for (const boost::dynamic_bitset<>& cycle : mcb) {
         std::size_t cycle_size = cycle.count();
         if (cycle_size < min_cycle_size || cycle_size > max_cycle_size) {
           return false;
+        };
+      };
+    };
+    if (max_atom_cycles_membership < max_unsigned) {
+      std::vector<unsigned> atom_cycles_membership (mcb[0].size());
+      for (const boost::dynamic_bitset<>& cycle : mcb) {
+        for (std::size_t atom_idx = cycle.find_first();
+          atom_idx != boost::dynamic_bitset<>::npos;
+          atom_idx = cycle.find_next(atom_idx)) {
+          unsigned& acm = atom_cycles_membership[atom_idx];
+          if (++acm > max_atom_cycles_membership) {
+            return false;
+          };
         };
       };
     };
@@ -191,12 +220,24 @@ public:
       environment_constraint, environment_constraints, replace, make_static);
   };
 
+  void SetMinNCycles(unsigned new_min_n_cycles) {
+    min_n_cycles = new_min_n_cycles;
+  };
+
+  void SetMaxNCycles(unsigned new_max_n_cycles) {
+    max_n_cycles = new_max_n_cycles;
+  };
+
   void SetMinCycleSize(unsigned new_min_cycle_size) {
     min_cycle_size = new_min_cycle_size;
   };
 
   void SetMaxCycleSize(unsigned new_max_cycle_size) {
     max_cycle_size = new_max_cycle_size;
+  };
+
+  void SetMaxAtomCyclesMembership(unsigned new_max_atom_cycles_membership) {
+    max_atom_cycles_membership = new_max_atom_cycles_membership;
   };
 
   void GenerateAtomConstraint(const RDKit::Atom* atom) {
@@ -413,8 +454,11 @@ public:
   };
 
   void ClearCyclicityConstraints() {
+    min_n_cycles = 0;
+    max_n_cycles = max_unsigned;
     min_cycle_size = 3;
-    max_cycle_size = std::numeric_limits<unsigned>::max();
+    max_cycle_size = max_unsigned;
+    max_atom_cycles_membership = max_unsigned;
   };
 
   void ClearConstraints(
@@ -472,12 +516,24 @@ public:
     return GetConstraint(atom_tag, environment_constraints);
   };
 
+  unsigned GetMinNCycles() const {
+    return min_n_cycles;
+  };
+
+  unsigned GetMaxNCycles() const {
+    return max_n_cycles;
+  };
+
   unsigned GetMinCycleSize() const {
     return min_cycle_size;
   };
 
   unsigned GetMaxCycleSize() const {
     return max_cycle_size;
+  };
+
+  unsigned GetMaxAtomCyclesMembership() const {
+    return max_atom_cycles_membership;
   };
 
   unsigned GetEnvironmentRadius() const {
@@ -709,8 +765,12 @@ public:
   };
 
   bool HasCyclicityConstraints() const {
-    return min_cycle_size > 3 || 
-      max_cycle_size < std::numeric_limits<unsigned>::max();
+    return 
+      min_n_cycles > 0 || 
+      max_n_cycles < max_unsigned ||
+      min_cycle_size > 3 || 
+      max_cycle_size < max_unsigned ||
+      max_atom_cycles_membership < max_unsigned;
   };
 
   explicit operator bool() const {
