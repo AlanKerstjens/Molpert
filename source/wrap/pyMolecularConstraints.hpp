@@ -187,22 +187,23 @@ void WrapMolecularConstraints() {
     python::arg("perturbation")))
   .def("ClearAtomConstraint", &MolecularConstraints::ClearAtomConstraint, (
     python::arg("atom_tag"),
-    python::arg("clear_static") = true))
+    python::arg("clear_static") = false))
   .def("ClearBondConstraint", &MolecularConstraints::ClearBondConstraint, (
     python::arg("bond_tag"),
-    python::arg("clear_static") = true))
+    python::arg("clear_static") = false))
   .def("ClearEnvironmentConstraint", &MolecularConstraints::ClearEnvironmentConstraint, (
     python::arg("atom_tag"),
-    python::arg("clear_static") = true))
+    python::arg("clear_static") = false))
   .def("ClearAtomConstraints", &MolecularConstraints::ClearAtomConstraints, (
-    python::arg("clear_static") = true))
+    python::arg("clear_static") = false))
   .def("ClearBondConstraints", &MolecularConstraints::ClearBondConstraints, (
-    python::arg("clear_static") = true))
+    python::arg("clear_static") = false))
   .def("ClearEnvironmentConstraints", &MolecularConstraints::ClearEnvironmentConstraints, (
-    python::arg("clear_static") = true))
+    python::arg("clear_static") = false))
   .def("ClearCyclicityConstraints", &MolecularConstraints::ClearCyclicityConstraints)
   .def("ClearConstraints", &MolecularConstraints::ClearConstraints, (
-    python::arg("clear_static") = true))
+    python::arg("clear_static") = false,
+    python::arg("clear_cyclicity_constraints") = true))
   .def("Clear", &MolecularConstraints::Clear)
   .def<bool (MolecularConstraints::*)(Tag, const AtomKey&) const>(
     "IsAtomKeyAllowed", &MolecularConstraints::IsAllowed, (

@@ -125,7 +125,7 @@ private:
   bool ClearConstraint(
     Tag tag,
     std::map<Tag, std::pair<Constraint, bool>>& constraints,
-    bool clear_static = true) const {
+    bool clear_static = false) const {
     auto it = constraints.find(tag);
     if (it == constraints.cend()) {
       return false;
@@ -357,19 +357,19 @@ public:
     return n_updated_keys;
   };
 
-  bool ClearAtomConstraint(Tag atom_tag, bool clear_static = true) {
+  bool ClearAtomConstraint(Tag atom_tag, bool clear_static = false) {
     return ClearConstraint(atom_tag, atom_constraints, clear_static);
   };
 
-  bool ClearBondConstraint(Tag bond_tag, bool clear_static = true) {
+  bool ClearBondConstraint(Tag bond_tag, bool clear_static = false) {
     return ClearConstraint(bond_tag, bond_constraints, clear_static);
   };
 
-  bool ClearEnvironmentConstraint(Tag atom_tag, bool clear_static = true) {
+  bool ClearEnvironmentConstraint(Tag atom_tag, bool clear_static = false) {
     return ClearConstraint(atom_tag, environment_constraints, clear_static);
   };
 
-  void ClearAtomConstraints(bool clear_static = true) {
+  void ClearAtomConstraints(bool clear_static = false) {
     if (clear_static) {
       return atom_constraints.clear();
     };
@@ -383,7 +383,7 @@ public:
     };
   };
 
-  void ClearBondConstraints(bool clear_static = true) {
+  void ClearBondConstraints(bool clear_static = false) {
     if (clear_static) {
       return bond_constraints.clear();
     };
@@ -397,7 +397,7 @@ public:
     };
   };
 
-  void ClearEnvironmentConstraints(bool clear_static = true) {
+  void ClearEnvironmentConstraints(bool clear_static = false) {
     if (clear_static) {
       return environment_constraints.clear();
     };
@@ -417,11 +417,15 @@ public:
     max_cycle_size = std::numeric_limits<unsigned>::max();
   };
 
-  void ClearConstraints(bool clear_static = true) {
+  void ClearConstraints(
+    bool clear_static = false,
+    bool clear_cyclicity_constraints = true) {
     ClearAtomConstraints(clear_static);
     ClearBondConstraints(clear_static);
     ClearEnvironmentConstraints(clear_static);
-    ClearCyclicityConstraints();
+    if (clear_cyclicity_constraints) {
+      ClearCyclicityConstraints();  
+    };
   };
 
   void Clear() {
