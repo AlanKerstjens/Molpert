@@ -308,6 +308,13 @@ void CorrectHydrogenCounts(RDKit::RWMol& molecule) {
   };
 };
 
+void RemoveBondStereochemistry(RDKit::RWMol& molecule) {
+  RDKit::MolOps::clearSingleBondDirFlags(molecule);
+  for (RDKit::Bond* bond : molecule.bonds()) {
+    bond->setStereo(RDKit::Bond::STEREONONE);
+  };
+};
+
 void PartialSanitization(
   RDKit::RWMol& molecule) {
   // CorrectAromaticity handles partial aromaticity. This includes promoting 
@@ -316,6 +323,8 @@ void PartialSanitization(
   // C1=CC=CC=C1 is kept kekulized. This task is delegated to the RDKit.
   CorrectAromaticity(molecule);
   CorrectHydrogenCounts(molecule);
+  // Remove bond stereochemistry. The RDKit gets REALLY confused if we keep it.
+  RemoveBondStereochemistry(molecule);
   // Sanitize the molecule skipping all steps that we have done manually.
   static const unsigned sanitization_flags =
     RDKit::MolOps::SanitizeFlags::SANITIZE_ALL ^
@@ -345,6 +354,8 @@ std::string UnsanitizedMoleculeToSMILES(const RDKit::ROMol& molecule) {
   // modifying it, which recalculates these properties, but doing so in a loop
   // is expensive and finicky since the calculation may fail. Instead we avoid
   // using these properties altogether.
+  // NOTE: It seems that sometimes the RDKit somehow still tries to canonicalize 
+  // the molecules, despite being instructed not to do so?
   return RDKit::MolToSmiles(
     molecule,
     false,  // Don't include stereochemistry since it's likely invalid.
