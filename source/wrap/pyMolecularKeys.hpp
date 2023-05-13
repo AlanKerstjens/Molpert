@@ -45,16 +45,6 @@ void WrapMolecularKeys() {
     .def_readwrite("bond_type", &BondKey::bond_type)
     .def("__str__", &BondKey::str)
     .def("__repr__", &BondKey::str);
-
-  python::class_<std::pair<AtomKey, AtomKey>>(
-    "AtomKeyChange", python::init<AtomKey, AtomKey>())
-    .def_readwrite("prior", &std::pair<AtomKey, AtomKey>::first)
-    .def_readwrite("posterior", &std::pair<AtomKey, AtomKey>::second);
-
-  python::class_<std::pair<BondKey, BondKey>>(
-    "BondKeyChange", python::init<BondKey, BondKey>())
-    .def_readwrite("prior", &std::pair<BondKey, BondKey>::first)
-    .def_readwrite("posterior", &std::pair<BondKey, BondKey>::second);
 };
 
 #endif // !_PY_MOLECULAR_KEYS_HPP_

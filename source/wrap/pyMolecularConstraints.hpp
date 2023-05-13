@@ -44,129 +44,42 @@ struct FunctionConverter {
   };
 };
 
-MolecularConstraints::AtomConstraintGenerator AtomConstraintGeneratorFactory(
-  MolecularConstraints::AtomConstraintType atom_constraint_type = 
-    MolecularConstraints::AtomConstraintType::Null,
-  const ChemicalDictionary* dictionary = nullptr) {
-  switch (atom_constraint_type) {
-    case MolecularConstraints::AtomConstraintType::Null:
-      return nullptr;
-    case MolecularConstraints::AtomConstraintType::Valence:
-      return ValenceConstraintGenerator;
-    case MolecularConstraints::AtomConstraintType::AtomKey:
-      if (dictionary) {
-        return AtomKeyConstraintGenerator(dictionary);
-      };
-    default:
-      return nullptr;
+// The RDKit only registered a RDKit::ROMol* pointer to-python converter,
+// which corresponds to the rdchem.Mol class. All functions expecting a
+// rdchem.Mol, including potential MoleculeConstraints, are actually expecting 
+// a RDKit::ROMol*. We can register a shim RDKit::ROMol to rdchem.Mol converter.
+struct ROMolConverter {
+  static PyObject* convert(const RDKit::ROMol& molecule) {
+    boost::python::object object (boost::python::ptr(&molecule));
+    return boost::python::incref(object.ptr());
   };
-};
-
-MolecularConstraints::BondConstraintGenerator BondConstraintGeneratorFactory(
-  MolecularConstraints::BondConstraintType bond_constraint_type = 
-    MolecularConstraints::BondConstraintType::Null,
-  const ChemicalDictionary* dictionary = nullptr) {
-  switch (bond_constraint_type) {
-    case MolecularConstraints::BondConstraintType::Null:
-      return nullptr;
-    case MolecularConstraints::BondConstraintType::BondKey:
-      if (dictionary) {
-        return BondKeyConstraintGenerator(dictionary);
-      };
-    default:
-      return nullptr;
-  };
-};
-
-MolecularConstraints::EnvironmentConstraintGenerator
-EnvironmentConstraintGeneratorFactory(
-  MolecularConstraints::EnvironmentConstraintType environment_constraint_type = 
-    MolecularConstraints::EnvironmentConstraintType::Null,
-  const ChemicalDictionary* dictionary = nullptr) {
-  switch (environment_constraint_type) {
-    case MolecularConstraints::EnvironmentConstraintType::Null:
-      return nullptr;
-    case MolecularConstraints::EnvironmentConstraintType::EnvironmentKey:
-      if (dictionary) {
-        return EnvironmentKeyConstraintGenerator(dictionary);
-      };
-    default:
-      return nullptr;
-  };
-};
-
-std::shared_ptr<MolecularConstraints> MolecularConstraintsFactory(
-  MolecularConstraints::AtomConstraintType atom_constraint_type = 
-    MolecularConstraints::AtomConstraintType::Null,
-  MolecularConstraints::BondConstraintType bond_constraint_type = 
-    MolecularConstraints::BondConstraintType::Null,
-  MolecularConstraints::EnvironmentConstraintType environment_constraint_type = 
-    MolecularConstraints::EnvironmentConstraintType::Null,
-  const ChemicalDictionary* dictionary = nullptr) {
-  auto atom_constraints_generator = AtomConstraintGeneratorFactory(
-    atom_constraint_type, dictionary);
-  auto bond_constraint_generator = BondConstraintGeneratorFactory(
-    bond_constraint_type, dictionary);
-  auto environment_constraint_generator = EnvironmentConstraintGeneratorFactory(
-    environment_constraint_type, dictionary);
-  unsigned environment_radius = 
-    dictionary ? dictionary->GetEnvironmentRadius() : 2;
-  return std::shared_ptr<MolecularConstraints>(new MolecularConstraints(
-    atom_constraints_generator,
-    bond_constraint_generator,
-    environment_constraint_generator,
-    environment_radius));
 };
 
 void WrapMolecularConstraints() {
   FunctionConverter()
-    .Register<bool(const AtomKey&)>()
-    .Register<bool(const BondKey&)>()
-    .Register<bool(const EnvironmentKey&)>();
+    .Register<bool(const RDKit::Atom*)>()
+    .Register<bool(const RDKit::Bond*)>()
+    .Register<bool(const RDKit::ROMol&)>()
+    .Register<std::optional<MolecularConstraints::AtomConstraint>(
+      const RDKit::Atom*, const RDKit::Atom*)>()
+    .Register<std::optional<MolecularConstraints::BondConstraint>(
+      const RDKit::Bond*, const RDKit::Bond*)>();
 
-  python::class_ constraints = python::class_<
-    MolecularConstraints, std::shared_ptr<MolecularConstraints>>(
-    "MolecularConstraints", python::init());
+  python::to_python_converter<RDKit::ROMol, ROMolConverter>();
 
-  python::scope constraints_scope (constraints);
-
-  python::enum_<MolecularConstraints::AtomConstraintType>("AtomConstraintType")
-    .value("Null", MolecularConstraints::AtomConstraintType::Null)
-    .value("Valence", MolecularConstraints::AtomConstraintType::Valence)
-    .value("AtomKey", MolecularConstraints::AtomConstraintType::AtomKey);
-
-  python::enum_<MolecularConstraints::BondConstraintType>("BondConstraintType")
-    .value("Null", MolecularConstraints::BondConstraintType::Null)
-    .value("BondKey", MolecularConstraints::BondConstraintType::BondKey);
-
-  python::enum_<MolecularConstraints::EnvironmentConstraintType>(
-    "EnvironmentConstraintType")
-    .value("Null", MolecularConstraints::EnvironmentConstraintType::Null)
-    .value("EnvironmentKey",
-      MolecularConstraints::EnvironmentConstraintType::EnvironmentKey);
-
-  constraints.def("__init__", python::make_constructor(&MolecularConstraintsFactory, 
-    python::default_call_policies(), (
-    python::arg("atom_constraint_type") = MolecularConstraints::AtomConstraintType::Null, 
-    python::arg("bond_constraint_type") = MolecularConstraints::BondConstraintType::Null,
-    python::arg("environment_constraint_type") = MolecularConstraints::EnvironmentConstraintType::Null,
-    python::arg("dictionary") = python::ptr((const ChemicalDictionary*) nullptr))))
-  .def("GenerateAtomConstraint", &MolecularConstraints::GenerateAtomConstraint, (
-    python::arg("atom")))
-  .def("GenerateAtomConstraints", &MolecularConstraints::GenerateAtomConstraints, (
-    python::arg("molecule")))
-  .def("GenerateBondConstraint", &MolecularConstraints::GenerateBondConstraint, (
-    python::arg("bond")))
-  .def("GenerateBondConstraints", &MolecularConstraints::GenerateBondConstraints, (
-    python::arg("molecule")))
-  .def("GenerateEnvironmentConstraint", &MolecularConstraints::GenerateEnvironmentConstraint, (
-    python::arg("molecule"),
-    python::arg("atom"),
-    python::arg("recalculate_atom_hashes") = false))
-  .def("GenerateEnvironmentConstraints", &MolecularConstraints::GenerateEnvironmentConstraints, (
-    python::arg("molecule")))
-  .def("GenerateConstraints", &MolecularConstraints::GenerateConstraints, (
-    python::arg("molecule")))
+  python::class_ constraints = python::class_<MolecularConstraints>(
+    "MolecularConstraints", python::init())
+  .def(python::init<
+    const MolecularConstraints::AtomConstraintGenerator&>((
+    python::arg("atom_constraint_generator"))))
+  .def(python::init<
+    const MolecularConstraints::BondConstraintGenerator&>((
+    python::arg("bond_constraint_generator"))))
+  .def(python::init<
+    const MolecularConstraints::AtomConstraintGenerator&,
+    const MolecularConstraints::BondConstraintGenerator&>((
+    python::arg("atom_constraint_generator"),
+    python::arg("bond_constraint_generator"))))
   .def("SetAtomConstraint", &MolecularConstraints::SetAtomConstraint, (
     python::arg("atom_tag"), 
     python::arg("atom_constraint"), 
@@ -177,11 +90,27 @@ void WrapMolecularConstraints() {
     python::arg("bond_constraint"), 
     python::arg("replace") = true,
     python::arg("make_static") = false))
-  .def("SetEnvironmentConstraint", &MolecularConstraints::SetEnvironmentConstraint, (
-    python::arg("atom_tag"), 
-    python::arg("environment_constraint"), 
-    python::arg("replace") = true,
+  .def("SetMoleculeConstraint", &MolecularConstraints::SetMoleculeConstraint, (
+    python::arg("molecule_constraint"), 
     python::arg("make_static") = false))
+  .def("GenerateAtomConstraint", &MolecularConstraints::GenerateAtomConstraint, (
+    python::arg("atom")))
+  .def("GenerateAtomConstraints", &MolecularConstraints::GenerateAtomConstraints, (
+    python::arg("molecule")))
+  .def("GenerateBondConstraint", &MolecularConstraints::GenerateBondConstraint, (
+    python::arg("bond")))
+  .def("GenerateBondConstraints", &MolecularConstraints::GenerateBondConstraints, (
+    python::arg("molecule")))
+  .def("GenerateConstraints", &MolecularConstraints::GenerateConstraints, (
+    python::arg("molecule")))
+  .def("UpdateAtomConstraint", &MolecularConstraints::UpdateAtomConstraint, (
+    python::arg("atom_tag"),
+    python::arg("prior_atom"),
+    python::arg("posterior_atom")))
+  .def("UpdateBondConstraint", &MolecularConstraints::UpdateBondConstraint, (
+    python::arg("bond_tag"),
+    python::arg("prior_bond"),
+    python::arg("posterior_bond")))
   .def("UpdateConstraints", &MolecularConstraints::UpdateConstraints, (
     python::arg("molecule"),
     python::arg("perturbation")))
@@ -191,75 +120,60 @@ void WrapMolecularConstraints() {
   .def("ClearBondConstraint", &MolecularConstraints::ClearBondConstraint, (
     python::arg("bond_tag"),
     python::arg("clear_static") = false))
-  .def("ClearEnvironmentConstraint", &MolecularConstraints::ClearEnvironmentConstraint, (
-    python::arg("atom_tag"),
+  .def("ClearMoleculeConstraint", &MolecularConstraints::ClearMoleculeConstraint, (
+    python::arg("constraint_idx"),
     python::arg("clear_static") = false))
   .def("ClearAtomConstraints", &MolecularConstraints::ClearAtomConstraints, (
     python::arg("clear_static") = false))
   .def("ClearBondConstraints", &MolecularConstraints::ClearBondConstraints, (
     python::arg("clear_static") = false))
-  .def("ClearEnvironmentConstraints", &MolecularConstraints::ClearEnvironmentConstraints, (
+  .def("ClearMoleculeConstraints", &MolecularConstraints::ClearMoleculeConstraints, (
     python::arg("clear_static") = false))
-  .def("ClearCyclicityConstraints", &MolecularConstraints::ClearCyclicityConstraints)
   .def("ClearConstraints", &MolecularConstraints::ClearConstraints, (
-    python::arg("clear_static") = false,
-    python::arg("clear_cyclicity_constraints") = true))
-  .def("Clear", &MolecularConstraints::Clear)
-  .def<bool (MolecularConstraints::*)(Tag, const AtomKey&) const>(
-    "IsAtomKeyAllowed", &MolecularConstraints::IsAllowed, (
+    python::arg("clear_static") = false))
+  .def("Clear", &MolecularConstraints::Clear, (
+    python::arg("clear_static") = false))
+  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Atom*) const>(
+    "IsAtomAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("atom_tag"),
-    python::arg("atom_key")))
-  .def<bool (MolecularConstraints::*)(Tag, const BondKey&) const>(
-    "IsBondKeyAllowed", &MolecularConstraints::IsAllowed, (
+    python::arg("atom")))
+  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Bond*) const>(
+    "IsBondAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("bond_tag"),
-    python::arg("bond_key")))
-  .def<bool (MolecularConstraints::*)(Tag, const EnvironmentKey&) const>(
-    "IsEnvironmentKeyAllowed", &MolecularConstraints::IsAllowed, (
+    python::arg("bond")))
+  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Atom*, const RDKit::Atom*) const>(
+    "IsAtomChangeAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("atom_tag"),
-    python::arg("environment_key")))
-  .def<bool (MolecularConstraints::*)(Tag, const AtomKeyChange&) const>(
-    "IsAtomKeyChangeAllowed", &MolecularConstraints::IsAllowed, (
-    python::arg("atom_tag"),
-    python::arg("atom_key_change")))
-  .def<bool (MolecularConstraints::*)(Tag, const BondKeyChange&) const>(
-    "IsBondKeyChangeAllowed", &MolecularConstraints::IsAllowed, (
+    python::arg("prior_atom"),
+    python::arg("posterior_atom")))
+  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Bond*, const RDKit::Bond*) const>(
+    "IsBondChangeAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("bond_tag"),
-    python::arg("bond_key_change")))
-  .def<bool (MolecularConstraints::*)(Tag, const EnvironmentKeyChange&) const>(
-    "IsEnvironmentKeyChangeAllowed", &MolecularConstraints::IsAllowed, (
-    python::arg("atom_tag"),
-    python::arg("environment_key_change")))
+    python::arg("prior_bond"),
+    python::arg("posterior_bond")))
   .def<bool (MolecularConstraints::*)(const RDKit::ROMol&, const MolecularPerturbation&) const>(
     "IsPerturbationAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("molecule"),
     python::arg("perturbation")))
+  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Atom*, const RDKit::Atom*)>(
+    "UpdateAtomConstraintIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
+    python::arg("atom_tag"),
+    python::arg("prior_atom"),
+    python::arg("posterior_atom")))
+  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Bond*, const RDKit::Bond*)>(
+    "UpdateBondConstraintIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
+    python::arg("bond_tag"),
+    python::arg("prior_bond"),
+    python::arg("posterior_bond")))
   .def<bool (MolecularConstraints::*)(const RDKit::ROMol&, const MolecularPerturbation&)>(
     "UpdateConstraintsIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
     python::arg("molecule"),
     python::arg("perturbation")))
   .def("HasAtomConstraintGenerator", &MolecularConstraints::HasAtomConstraintGenerator)
   .def("HasBondConstraintGenerator", &MolecularConstraints::HasBondConstraintGenerator)
-  .def("HasEnvironmentConstraintGenerator", &MolecularConstraints::HasEnvironmentConstraintGenerator)
   .def("HasConstraintGenerators", &MolecularConstraints::HasConstraintGenerators)
-  .def("HasCyclicityConstraints", &MolecularConstraints::HasCyclicityConstraints)
   .def("__bool__", &MolecularConstraints::operator bool)
-  .def("__len__", &MolecularConstraints::Size)
-  .add_property("min_n_cycles",
-    &MolecularConstraints::GetMinNCycles, 
-    &MolecularConstraints::SetMinNCycles)
-  .add_property("max_n_cycles",
-    &MolecularConstraints::GetMaxNCycles, 
-    &MolecularConstraints::SetMaxNCycles)
-  .add_property("min_cycle_size",
-    &MolecularConstraints::GetMinCycleSize, 
-    &MolecularConstraints::SetMinCycleSize)
-  .add_property("max_cycle_size",
-    &MolecularConstraints::GetMaxCycleSize, 
-    &MolecularConstraints::SetMaxCycleSize)
-  .add_property("max_atom_cycles_membership",
-    &MolecularConstraints::GetMaxAtomCyclesMembership, 
-    &MolecularConstraints::SetMaxAtomCyclesMembership)
-  .add_property("environment_radius", &MolecularConstraints::GetEnvironmentRadius);
+  .def("__len__", &MolecularConstraints::Size);
 };
 
 #endif // !_PY_MOLECULAR_CONSTRAINTS_HPP_

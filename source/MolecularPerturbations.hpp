@@ -2,7 +2,7 @@
 #ifndef _MOLECULAR_PERTURBATIONS_HPP_
 #define _MOLECULAR_PERTURBATIONS_HPP_
 
-#include "MolecularGraphProjection.hpp"
+#include "MolecularTags.hpp"
 #include <GraphMol/RWMol.h>
 
 // typedefs so we can use less bits if we really need to
@@ -45,8 +45,6 @@ public:
     operator()(perturbed_molecule);
     return perturbed_molecule;
   };
-  // Simulate the changes on the molecular graph associated with the perturbation
-  virtual void ProjectMolecularGraph(MolecularGraphProjection&) const = 0;
   // Identifier (e.g. hash) for deduplication purposes
   virtual std::size_t ID() const = 0;
   // Perturbation type getter
@@ -68,11 +66,6 @@ public:
   void operator()(RDKit::RWMol& molecule) const {
     RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     atom->setAtomicNum(atomic_number);
-  };
-
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    MolecularGraphProjection::Atom& atom = projection.EditAtom(atom_idx);
-    atom.atomic_number = atomic_number;
   };
 
   std::size_t ID() const {
@@ -100,11 +93,6 @@ public:
     atom->setFormalCharge(formal_charge);
   };
 
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    MolecularGraphProjection::Atom& atom = projection.EditAtom(atom_idx);
-    atom.formal_charge = formal_charge;
-  };
-
   std::size_t ID() const {
     std::size_t id = type;
     boost::hash_combine(id, atom_idx);
@@ -128,11 +116,6 @@ public:
   void operator()(RDKit::RWMol& molecule) const {
     RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     atom->setNumExplicitHs(n_explicit_hydrogens);
-  };
-
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    MolecularGraphProjection::Atom& atom = projection.EditAtom(atom_idx);
-    atom.n_explicit_hydrogens = n_explicit_hydrogens;
   };
 
   std::size_t ID() const {
@@ -184,12 +167,6 @@ public:
     RDKit::Bond* bond =
       molecule.getBondBetweenAtoms(begin_atom_idx, end_atom_idx);
     bond->setBondType(bond_type);
-  };
-
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    MolecularGraphProjection::Bond& bond = projection.EditBond(
-      begin_atom_idx, end_atom_idx);
-    bond.bond_type = bond_type;
   };
 
   std::size_t ID() const {
@@ -244,11 +221,6 @@ public:
   friend auto operator<=>(
     const AtomConstruction&, const AtomConstruction&) = default;
 
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    projection.AddAtom(
-      atom_tag, atomic_number, formal_charge, n_explicit_hydrogens);
-  };
-
   std::size_t ID() const {
     std::size_t id = type;
     boost::hash_combine(id, atom_tag);
@@ -275,10 +247,6 @@ public:
 
   friend auto operator<=>(
     const AtomDestruction&, const AtomDestruction&) = default;
-
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    projection.RemoveAtom(atom_idx);
-  };
 
   std::size_t ID() const {
     std::size_t id = type;
@@ -342,10 +310,6 @@ public:
   friend auto operator<=>(
     const BondConstruction&, const BondConstruction&) = default;
 
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    projection.AddBond(bond_tag, begin_atom_idx, end_atom_idx, bond_type);
-  };
-
   std::size_t ID() const {
     std::size_t id = type;
     boost::hash_combine(id, bond_tag);
@@ -384,10 +348,6 @@ public:
 
   friend auto operator<=>(
     const BondDestruction&, const BondDestruction&) = default;
-
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    projection.RemoveBond(begin_atom_idx, end_atom_idx);
-  };
 
   std::size_t ID() const {
     std::size_t id = type;
@@ -460,21 +420,6 @@ public:
     };
     for (const AtomDestruction& atom_destruction : atom_destructions) {
       atom_destruction(molecule);
-    };
-  };
-
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    for (const AtomConstruction& atom_construction : atom_constructions) {
-      atom_construction.ProjectMolecularGraph(projection);
-    };
-    for (const BondConstruction& bond_construction : bond_constructions) {
-      bond_construction.ProjectMolecularGraph(projection);
-    };
-    for (const BondDestruction& bond_destruction : bond_destructions) {
-      bond_destruction.ProjectMolecularGraph(projection);
-    };
-    for (const AtomDestruction& atom_destruction : atom_destructions) {
-      atom_destruction.ProjectMolecularGraph(projection);
     };
   };
 
@@ -806,12 +751,6 @@ public:
     subgraph_construction(molecule);
     TopologicalPerturbation::operator()(molecule);
     subgraph_destruction(molecule);
-  };
-
-  void ProjectMolecularGraph(MolecularGraphProjection& projection) const {
-    subgraph_construction.ProjectMolecularGraph(projection);
-    TopologicalPerturbation::ProjectMolecularGraph(projection);
-    subgraph_destruction.ProjectMolecularGraph(projection);
   };
 
   std::size_t ID() const {

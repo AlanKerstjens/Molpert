@@ -283,8 +283,4 @@ struct MolecularKeys {
   };
 };
 
-
-typedef std::pair<AtomKey, AtomKey> AtomKeyChange;
-typedef std::pair<BondKey, BondKey> BondKeyChange;
-
 #endif // !_MOLECULAR_KEYS_HPP_

@@ -8,7 +8,6 @@
 #include "MolecularGraphSearch.hpp"
 
 typedef std::uint64_t EnvironmentKey;
-typedef std::pair<std::uint64_t, std::uint64_t> EnvironmentKeyChange;
 static const EnvironmentKey NULL_ENVIRONMENT_KEY (0);
 
 struct CircularAtomicEnvironment {

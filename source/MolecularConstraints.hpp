@@ -2,51 +2,39 @@
 #ifndef _MOLECULAR_CONSTRAINTS_HPP_
 #define _MOLECULAR_CONSTRAINTS_HPP_
 
+#include "Valence.hpp"
 #include "MolecularPerturbations.hpp"
-#include "ChemicalDictionary.hpp"
 #include <boost/core/null_deleter.hpp>
 
 class MolecularConstraints {
 public:
-  // Given a molecular key, a constraint evaluates if the key is allowed (true)
-  // or not (false).
-  typedef std::function<bool(const AtomKey&)> AtomConstraint;
-  typedef std::function<bool(const BondKey&)> BondConstraint;
-  typedef std::function<bool(const EnvironmentKey&)> EnvironmentConstraint;
+  // Given an atom, bond or molecule a constraint evaluates if it is allowed 
+  // (true) or not (false).
+  typedef std::function<bool(const RDKit::Atom*)> AtomConstraint;
+  typedef std::function<bool(const RDKit::Bond*)> BondConstraint;
+  typedef std::function<bool(const RDKit::ROMol&)> MoleculeConstraint;
   // Built-in constraint types.
-  enum class AtomConstraintType {Null, Valence, AtomKey};
-  enum class BondConstraintType {Null, BondKey};
-  enum class EnvironmentConstraintType {Null, EnvironmentKey};
-  // Constraint generators compare two molecular keys (prior and posterior) and,
-  // if pertinent, generate new constraints for the posterior key. The return
-  // type is a std::optional that should be empty if the constraint hasn't
-  // changed. If the constraint has been erased it should be set to nullptr.
+  enum class AtomConstraintType {Valence};
+  // Constraint generators compare two atoms, bonds or molecules (prior and 
+  // posterior) and, if pertinent, generate new constraints for the posterior 
+  // one. The return type is a std::optional that should be empty if the 
+  // constraint hasn't changed. If the constraint has been erased it should be 
+  // set to nullptr.
   typedef std::function<
-    std::optional<AtomConstraint>(const AtomKeyChange&)
+    std::optional<AtomConstraint>(const RDKit::Atom*, const RDKit::Atom*)
   > AtomConstraintGenerator;
   typedef std::function<
-    std::optional<BondConstraint>(const BondKeyChange&)
+    std::optional<BondConstraint>(const RDKit::Bond*, const RDKit::Bond*)
   > BondConstraintGenerator;
-  typedef std::function<
-    std::optional<EnvironmentConstraint>(const EnvironmentKeyChange&)
-  > EnvironmentConstraintGenerator;
 
 private:
   // The bool in the value is a "static" flag.
   // When set the constraint won't be settable or updateable.
   std::map<Tag, std::pair<AtomConstraint, bool>> atom_constraints;
   std::map<Tag, std::pair<BondConstraint, bool>> bond_constraints;
-  std::map<Tag, std::pair<EnvironmentConstraint, bool>> environment_constraints;
+  std::vector<std::pair<MoleculeConstraint, bool>> molecule_constraints;
   AtomConstraintGenerator atom_constraint_generator;
   BondConstraintGenerator bond_constraint_generator;
-  EnvironmentConstraintGenerator environment_constraint_generator;
-  CircularAtomicEnvironmentGenerator environment_generator;
-  static const unsigned max_unsigned = std::numeric_limits<unsigned>::max();
-  unsigned min_n_cycles = 0;
-  unsigned max_n_cycles = max_unsigned;
-  unsigned min_cycle_size = 3;
-  unsigned max_cycle_size = max_unsigned;
-  unsigned max_atom_cycles_membership = max_unsigned;
 
 private:
   template <class Constraint>
@@ -89,13 +77,18 @@ private:
     return it != constraints.cend() ? &it->second.first : nullptr;
   };
 
-  template <class Constraint, class KeyChange, class ConstraintGenerator>
+  template <class T, class Constraint, class ConstraintGenerator>
   std::pair<std::shared_ptr<const Constraint>, bool> UpdatedConstraint(
     Tag tag,
+    const T* prior,
+    const T* posterior,
     const std::map<Tag, std::pair<Constraint, bool>>& constraints,
-    const KeyChange& key_change,
     const ConstraintGenerator& constraint_generator) const {
     std::shared_ptr<const Constraint> updated_constraint;
+    // Null posteriors don't get constraints.
+    if (prior && !posterior) {
+      return {updated_constraint, true};
+    };
     // Check if we already have a constraint for this tag.
     const Constraint* constraint = nullptr;
     bool is_static = false;
@@ -111,7 +104,8 @@ private:
       return {updated_constraint, false};
     };
     // If not, we can try generating a new constraint.
-    std::optional<Constraint> new_constraint = constraint_generator(key_change);
+    std::optional<Constraint> new_constraint = 
+      constraint_generator(prior, posterior);
     // If no new constraint was generated we don't update anything.
     if (!new_constraint) {
       updated_constraint.reset(constraint, boost::null_deleter());
@@ -142,56 +136,19 @@ private:
     return true;
   };
 
-  bool CyclicityConstraintsSatisfied(
-    const MolecularGraphProjection& projection) const {
-    if (!HasCyclicityConstraints()) {
-      return true;
-    };
-    std::vector<boost::dynamic_bitset<>> mcb = projection.MinimumCycleBasis();
-    if (mcb.empty()) {
-      if (min_n_cycles > 0) {
-        return false;
-      };
-      return true;
-    };
-    if (mcb.size() > max_n_cycles) {
-      return false;
-    };
-    if (min_cycle_size > 3 || max_cycle_size < max_unsigned) {
-      for (const boost::dynamic_bitset<>& cycle : mcb) {
-        std::size_t cycle_size = cycle.count();
-        if (cycle_size < min_cycle_size || cycle_size > max_cycle_size) {
-          return false;
-        };
-      };
-    };
-    if (max_atom_cycles_membership < max_unsigned) {
-      std::vector<unsigned> atom_cycles_membership (mcb[0].size());
-      for (const boost::dynamic_bitset<>& cycle : mcb) {
-        for (std::size_t atom_idx = cycle.find_first();
-          atom_idx != boost::dynamic_bitset<>::npos;
-          atom_idx = cycle.find_next(atom_idx)) {
-          unsigned& acm = atom_cycles_membership[atom_idx];
-          if (++acm > max_atom_cycles_membership) {
-            return false;
-          };
-        };
-      };
-    };
-    return true;
-  };
-
 public:
   MolecularConstraints() = default;
   MolecularConstraints(
+    const AtomConstraintGenerator& atom_constraint_generator) :
+    atom_constraint_generator(atom_constraint_generator) {};
+  MolecularConstraints(
+    const BondConstraintGenerator& bond_constraint_generator) :
+    bond_constraint_generator(bond_constraint_generator) {};
+  MolecularConstraints(
     const AtomConstraintGenerator& atom_constraint_generator,
-    const BondConstraintGenerator& bond_constraint_generator,
-    const EnvironmentConstraintGenerator& environment_constraint_generator,
-    unsigned environment_radius = 2) :
+    const BondConstraintGenerator& bond_constraint_generator) :
     atom_constraint_generator(atom_constraint_generator),
-    bond_constraint_generator(bond_constraint_generator),
-    environment_constraint_generator(environment_constraint_generator),
-    environment_generator(environment_radius) {};
+    bond_constraint_generator(bond_constraint_generator) {};
 
   bool SetAtomConstraint(
     Tag atom_tag,
@@ -211,41 +168,18 @@ public:
       bond_tag, bond_constraint, bond_constraints, replace, make_static);
   };
 
-  bool SetEnvironmentConstraint(
-    Tag atom_tag,
-    const EnvironmentConstraint& environment_constraint,
-    bool replace = true,
+  void SetMoleculeConstraint(
+    const MoleculeConstraint& molecule_constraint,
     bool make_static = false) {
-    return SetConstraint(atom_tag, 
-      environment_constraint, environment_constraints, replace, make_static);
-  };
-
-  void SetMinNCycles(unsigned new_min_n_cycles) {
-    min_n_cycles = new_min_n_cycles;
-  };
-
-  void SetMaxNCycles(unsigned new_max_n_cycles) {
-    max_n_cycles = new_max_n_cycles;
-  };
-
-  void SetMinCycleSize(unsigned new_min_cycle_size) {
-    min_cycle_size = new_min_cycle_size;
-  };
-
-  void SetMaxCycleSize(unsigned new_max_cycle_size) {
-    max_cycle_size = new_max_cycle_size;
-  };
-
-  void SetMaxAtomCyclesMembership(unsigned new_max_atom_cycles_membership) {
-    max_atom_cycles_membership = new_max_atom_cycles_membership;
+    molecule_constraints.emplace_back(molecule_constraint, make_static);
   };
 
   void GenerateAtomConstraint(const RDKit::Atom* atom) {
     if (!atom_constraint_generator) {
       return;
     };
-    std::optional<AtomConstraint> atom_constraint = atom_constraint_generator(
-      {NULL_ATOM_KEY, AtomKey(atom)});
+    std::optional<AtomConstraint> atom_constraint = 
+      atom_constraint_generator(nullptr, atom);
     if (!atom_constraint) {
       return;
     };
@@ -265,8 +199,8 @@ public:
     if (!bond_constraint_generator) {
       return;
     };
-    std::optional<BondConstraint> bond_constraint = bond_constraint_generator(
-      {NULL_BOND_KEY, BondKey(bond)});
+    std::optional<BondConstraint> bond_constraint = 
+      bond_constraint_generator(nullptr, bond);
     if (!bond_constraint) {
       return;
     };
@@ -282,66 +216,35 @@ public:
     };
   };
 
-  void GenerateEnvironmentConstraint(
-    const RDKit::ROMol& molecule,
-    const RDKit::Atom* atom,
-    bool recalculate_atom_hashes = false) {
-    if (!environment_constraint_generator) {
-      return;
-    };
-    if (recalculate_atom_hashes) {
-      environment_generator.CalculateAtomHashes(molecule);
-    };
-    std::optional<EnvironmentConstraint> environment_constraint = 
-      environment_constraint_generator(
-        {NULL_ENVIRONMENT_KEY, environment_generator.Key(atom)});
-    if (!environment_constraint) {
-      return;
-    };
-    SetEnvironmentConstraint(GetTag(atom), std::move(*environment_constraint));
-  };
-
-  void GenerateEnvironmentConstraints(const RDKit::ROMol& molecule) {
-    if (!environment_constraint_generator) {
-      return;
-    };
-    environment_generator.CalculateAtomHashes(molecule);
-    for (const RDKit::Atom* atom : molecule.atoms()) {
-      GenerateEnvironmentConstraint(molecule, atom, false);
-    };
-  };
-
   void GenerateConstraints(const RDKit::ROMol& molecule) {
     GenerateAtomConstraints(molecule);
     GenerateBondConstraints(molecule);
-    GenerateEnvironmentConstraints(molecule);
   };
 
   std::pair<std::shared_ptr<const AtomConstraint>, bool>
   UpdatedAtomConstraint(
-    Tag atom_tag, const AtomKeyChange& atom_key_change) const {
-    return UpdatedConstraint(
-      atom_tag, atom_constraints, atom_key_change, atom_constraint_generator);
+    Tag atom_tag,
+    const RDKit::Atom* prior_atom,
+    const RDKit::Atom* posterior_atom) const {
+    return UpdatedConstraint(atom_tag, prior_atom, posterior_atom, 
+      atom_constraints, atom_constraint_generator);
   };
 
   std::pair<std::shared_ptr<const BondConstraint>, bool>
   UpdatedBondConstraint(
-    Tag bond_tag, const BondKeyChange& bond_key_change) const {
-    return UpdatedConstraint(
-      bond_tag, bond_constraints, bond_key_change, bond_constraint_generator);
-  };
-
-  std::pair<std::shared_ptr<const EnvironmentConstraint>, bool>
-  UpdatedEnvironmentConstraint(
-    Tag atom_tag, const EnvironmentKeyChange& environment_key_change) const {
-    return UpdatedConstraint(atom_tag, environment_constraints, 
-      environment_key_change, environment_constraint_generator);
+    Tag bond_tag,
+    const RDKit::Bond* prior_bond, 
+    const RDKit::Bond* posterior_bond) const {
+    return UpdatedConstraint(bond_tag, prior_bond, posterior_bond,
+      bond_constraints, bond_constraint_generator);
   };
 
   bool UpdateAtomConstraint(
-    Tag atom_tag, const AtomKeyChange& atom_key_change) {
+    Tag atom_tag,
+    const RDKit::Atom* prior_atom,
+    const RDKit::Atom* posterior_atom) {
     auto [atom_constraint, updated] = UpdatedAtomConstraint(
-      atom_tag, atom_key_change);
+      atom_tag, prior_atom, posterior_atom);
     if (!updated) {
       return false;
     };
@@ -349,24 +252,15 @@ public:
   };
 
   bool UpdateBondConstraint(
-    Tag bond_tag, const BondKeyChange& bond_key_change) {
+    Tag bond_tag,
+    const RDKit::Bond* prior_bond,
+    const RDKit::Bond* posterior_bond) {
     auto [bond_constraint, updated] = UpdatedBondConstraint(
-      bond_tag, bond_key_change);
+      bond_tag, prior_bond, posterior_bond);
     if (!updated) {
       false;
     };
     return SetBondConstraint(bond_tag, std::move(*bond_constraint));
-  };
-
-  bool UpdateEnvironmentConstraint(
-    Tag atom_tag, const EnvironmentKeyChange& environment_key_change) {
-    auto [environment_constraint, updated] = UpdatedEnvironmentConstraint(
-      atom_tag, environment_key_change);
-    if (!updated) {
-      false;
-    };
-    return SetEnvironmentConstraint(
-      atom_tag, std::move(*environment_constraint));
   };
 
   bool UpdateConstraints(
@@ -375,25 +269,21 @@ public:
     if (!HasConstraintGenerators()) {
       return false;
     };
-    MolecularGraphProjection projection (molecule);
-    perturbation.ProjectMolecularGraph(projection);
+    RDKit::RWMol perturbed_molecule = perturbation(molecule);
     std::size_t n_updated_keys = 0;
-    if (atom_constraint_generator || bond_constraint_generator) {
-      auto [atom_key_changes, bond_key_changes] =
-        projection.MolecularKeyChanges(molecule, !!bond_constraint_generator);
-      for (const auto& [atom_tag, atom_key_change] : atom_key_changes) {
-        n_updated_keys += UpdateAtomConstraint(atom_tag, atom_key_change);
-      };
-      for (const auto& [bond_tag, bond_key_change] : bond_key_changes) {
-        n_updated_keys += UpdateBondConstraint(bond_tag, bond_key_change);
+    if (atom_constraint_generator) {
+      auto atom_pairs = AtomPairs(molecule, perturbed_molecule);
+      for (auto [prior_atom, posterior_atom] : atom_pairs) {
+        n_updated_keys += UpdateAtomConstraint(
+          GetTag(prior_atom), prior_atom, posterior_atom);
       };
     };
-    if (environment_constraint_generator) {
-      auto environment_key_changes = projection.EnvironmentKeyChanges(
-        molecule, environment_generator.GetEnvironmentRadius());
-      for (const auto& [atom_tag, ekc] : environment_key_changes) {
-        n_updated_keys += UpdateEnvironmentConstraint(atom_tag, ekc);
-      };
+    if (bond_constraint_generator) {
+      auto bond_pairs = BondPairs(molecule, perturbed_molecule);
+      for (auto [prior_bond, posterior_bond] : bond_pairs) {
+        n_updated_keys += UpdateBondConstraint(
+          GetTag(prior_bond), prior_bond, posterior_bond);
+      };   
     };
     return n_updated_keys;
   };
@@ -406,8 +296,16 @@ public:
     return ClearConstraint(bond_tag, bond_constraints, clear_static);
   };
 
-  bool ClearEnvironmentConstraint(Tag atom_tag, bool clear_static = false) {
-    return ClearConstraint(atom_tag, environment_constraints, clear_static);
+  bool ClearMoleculeConstraint(
+    std::size_t constraint_idx, bool clear_static = false) {
+    if (constraint_idx >= molecule_constraints.size()) {
+      return false;
+    };
+    if (clear_static || !molecule_constraints[constraint_idx].second) {
+      molecule_constraints.erase(molecule_constraints.begin() + constraint_idx);
+      return true;
+    };
+    return false;
   };
 
   void ClearAtomConstraints(bool clear_static = false) {
@@ -438,45 +336,28 @@ public:
     };
   };
 
-  void ClearEnvironmentConstraints(bool clear_static = false) {
+  void ClearMoleculeConstraints(bool clear_static = false) {
     if (clear_static) {
-      return environment_constraints.clear();
+      return molecule_constraints.clear();
     };
-    for (auto it = environment_constraints.cbegin();
-      it != environment_constraints.cend();) {
-      bool is_static = it->second.second;
-      if (!is_static) {
-        it = environment_constraints.erase(it);
-      } else {
-        ++it;
-      };
-    };
+    auto it = std::remove_if(
+      molecule_constraints.begin(), molecule_constraints.end(),
+      [](const std::pair<MoleculeConstraint, bool>& constraint) {
+        return !constraint.second;
+      });
+    molecule_constraints.erase(it, molecule_constraints.end());
   };
 
-  void ClearCyclicityConstraints() {
-    min_n_cycles = 0;
-    max_n_cycles = max_unsigned;
-    min_cycle_size = 3;
-    max_cycle_size = max_unsigned;
-    max_atom_cycles_membership = max_unsigned;
-  };
-
-  void ClearConstraints(
-    bool clear_static = false,
-    bool clear_cyclicity_constraints = true) {
+  void ClearConstraints(bool clear_static = false) {
     ClearAtomConstraints(clear_static);
     ClearBondConstraints(clear_static);
-    ClearEnvironmentConstraints(clear_static);
-    if (clear_cyclicity_constraints) {
-      ClearCyclicityConstraints();  
-    };
+    ClearMoleculeConstraints(clear_static);
   };
 
-  void Clear() {
+  void Clear(bool clear_static = false) {
     atom_constraint_generator = nullptr;
     bond_constraint_generator = nullptr;
-    environment_constraint_generator = nullptr;
-    ClearConstraints();
+    ClearConstraints(clear_static);
   };
 
   const AtomConstraint* GetAtomConstraint(Tag atom_tag) const {
@@ -503,79 +384,40 @@ public:
     return GetConstraint(bond_tag, bond_constraints);
   };
 
-  const EnvironmentConstraint* GetEnvironmentConstraint(Tag atom_tag) const {
-    return GetConstraint(atom_tag, environment_constraints);
+  const MoleculeConstraint* GetMoleculeConstraint(
+    std::size_t constraint_idx) const {
+    return constraint_idx >= molecule_constraints.size() ? 
+      nullptr : &molecule_constraints[constraint_idx].first;
   };
 
-  const EnvironmentConstraint* GetEnvironmentConstraint(
-    const RDKit::Atom* atom) const {
-    auto [atom_tag, atom_is_tagged] = GetTagIfPresent(atom);
-    if (!atom_is_tagged) {
-      return nullptr;
-    };
-    return GetConstraint(atom_tag, environment_constraints);
-  };
-
-  unsigned GetMinNCycles() const {
-    return min_n_cycles;
-  };
-
-  unsigned GetMaxNCycles() const {
-    return max_n_cycles;
-  };
-
-  unsigned GetMinCycleSize() const {
-    return min_cycle_size;
-  };
-
-  unsigned GetMaxCycleSize() const {
-    return max_cycle_size;
-  };
-
-  unsigned GetMaxAtomCyclesMembership() const {
-    return max_atom_cycles_membership;
-  };
-
-  unsigned GetEnvironmentRadius() const {
-    return environment_generator.GetEnvironmentRadius();
-  };
-
-  bool IsAllowed(Tag atom_tag, const AtomKey& atom_key) const {
+  bool IsAllowed(Tag atom_tag, const RDKit::Atom* atom) const {
     const AtomConstraint* atom_constraint = GetAtomConstraint(atom_tag);
     // If the atom has no constraints, everything is allowed.
     // If it does have a constraint, check if the AtomKey satisfies it.
-    return !atom_constraint || (*atom_constraint)(atom_key);
+    return !atom_constraint || (*atom_constraint)(atom);
   };
 
-  bool IsAllowed(Tag bond_tag, const BondKey& bond_key) const {
+  bool IsAllowed(Tag bond_tag, const RDKit::Bond* bond) const {
     const BondConstraint* bond_constraint = GetBondConstraint(bond_tag);
-    return !bond_constraint || (*bond_constraint)(bond_key);
-  };
-
-  bool IsAllowed(Tag atom_tag, const EnvironmentKey& environment_key) const {
-    const EnvironmentConstraint* environment_constraint = 
-      GetEnvironmentConstraint(atom_tag);
-    return !environment_constraint || (*environment_constraint)(environment_key);
-  };
-
-  bool IsAllowed(Tag atom_tag, const AtomKeyChange& atom_key_change) const {
-    auto [atom_constraint, updated] = UpdatedAtomConstraint(
-      atom_tag, atom_key_change);
-    return !atom_constraint || (*atom_constraint)(atom_key_change.second);
-  };
-
-  bool IsAllowed(Tag bond_tag, const BondKeyChange& bond_key_change) const {
-    auto [bond_constraint, updated] = UpdatedBondConstraint(
-      bond_tag, bond_key_change);
-    return !bond_constraint || (*bond_constraint)(bond_key_change.second);
+    return !bond_constraint || (*bond_constraint)(bond);
   };
 
   bool IsAllowed(
-    Tag atom_tag, const EnvironmentKeyChange& environment_key_change) const {
-    auto [environment_constraint, updated] = UpdatedEnvironmentConstraint(
-      atom_tag, environment_key_change);
-    return !environment_constraint ||
-      (*environment_constraint)(environment_key_change.second);
+    Tag atom_tag,
+    const RDKit::Atom* prior_atom,
+    const RDKit::Atom* posterior_atom) const {
+    auto [atom_constraint, updated] = UpdatedAtomConstraint(
+      atom_tag, prior_atom, posterior_atom);
+    return !atom_constraint || (*atom_constraint)(posterior_atom);
+  };
+
+  bool IsAllowed(
+    Tag bond_tag,
+    const RDKit::Bond* prior_bond,
+    const RDKit::Bond* posterior_bond) const {
+    auto [bond_constraint, updated] = UpdatedBondConstraint(
+      bond_tag, prior_bond, posterior_bond);
+    return !bond_constraint || (*bond_constraint)(posterior_bond);
   };
 
   bool IsAllowed(
@@ -584,68 +426,57 @@ public:
     if (!(*this)) {
       return true;
     };
-    MolecularGraphProjection projection (molecule);
-    perturbation.ProjectMolecularGraph(projection);
-    if (MustCheckAtomConstraints() || MustCheckBondConstraints()) {
-      auto [atom_key_changes, bond_key_changes] =
-        projection.MolecularKeyChanges(molecule, MustCheckBondConstraints());
-      if (MustCheckAtomConstraints()) {
-        for (const auto& [atom_tag, atom_key_change] : atom_key_changes) {
-          if (!IsAllowed(atom_tag, atom_key_change)) {
-            return false;
-          };
-        };
-      };
-      if (MustCheckBondConstraints()) {
-        for (const auto& [bond_tag, bond_key_change] : bond_key_changes) {
-          if (!IsAllowed(bond_tag, bond_key_change)) {
-            return false;
-          };
-        };
-      };
-    };
-    if (MustCheckEnvironmentConstraints()) {
-      auto environment_key_changes = projection.EnvironmentKeyChanges(
-        molecule, environment_generator.GetEnvironmentRadius());
-      for (const auto& [atom_tag, ekc] : environment_key_changes) {
-        if (!IsAllowed(atom_tag, ekc)) {
+    RDKit::RWMol perturbed_molecule = perturbation(molecule);
+    if (MustCheckAtomConstraints()) {
+      auto atom_pairs = AtomPairs(molecule, perturbed_molecule);
+      for (auto [prior_atom, posterior_atom] : atom_pairs) {
+        if (!IsAllowed(GetTag(prior_atom), prior_atom, posterior_atom)) {
           return false;
         };
       };
     };
-    return CyclicityConstraintsSatisfied(projection);
+    if (MustCheckBondConstraints()) {
+      auto bond_pairs = BondPairs(molecule, perturbed_molecule);
+      for (auto [prior_bond, posterior_bond] : bond_pairs) {
+        if (!IsAllowed(GetTag(prior_bond), prior_bond, posterior_bond)) {
+          return false;
+        };
+      };
+    };
+    if (MustCheckMoleculeConstraints()) {
+      for (const auto& [molecule_constraint, _] : molecule_constraints) {
+        if (!molecule_constraint(perturbed_molecule)) {
+          return false;
+        };
+      };
+    };
+    return true;
   };
 
-  bool UpdateIfAllowed(Tag atom_tag, const AtomKeyChange& atom_key_change) {
+  bool UpdateIfAllowed(
+    Tag atom_tag,
+    const RDKit::Atom* prior_atom,
+    const RDKit::Atom* posterior_atom) {
     auto [atom_constraint, updated] = 
-      UpdatedAtomConstraint(atom_tag, atom_key_change);
+      UpdatedAtomConstraint(atom_tag, prior_atom, posterior_atom);
     bool is_allowed = 
-      !atom_constraint || (*atom_constraint)(atom_key_change.second);
+      !atom_constraint || (*atom_constraint)(posterior_atom);
     if (is_allowed && updated) {
       SetAtomConstraint(atom_tag, std::move(*atom_constraint));
     };
     return is_allowed;
   };
 
-  bool UpdateIfAllowed(Tag bond_tag, const BondKeyChange& bond_key_change) {
+  bool UpdateIfAllowed(
+    Tag bond_tag,
+    const RDKit::Bond* prior_bond,
+    const RDKit::Bond* posterior_bond) {
     auto [bond_constraint, updated] = 
-      UpdatedBondConstraint(bond_tag, bond_key_change);
+      UpdatedBondConstraint(bond_tag, prior_bond, posterior_bond);
     bool is_allowed = 
-      !bond_constraint || (*bond_constraint)(bond_key_change.second);
+      !bond_constraint || (*bond_constraint)(posterior_bond);
     if (is_allowed && updated) {
       SetBondConstraint(bond_tag, std::move(*bond_constraint));
-    };
-    return is_allowed;
-  };
-
-  bool UpdateIfAllowed(
-    Tag atom_tag, const EnvironmentKeyChange& environment_key_change) {
-    auto [environment_constraint, updated] = 
-      UpdatedEnvironmentConstraint(atom_tag, environment_key_change);
-    bool is_allowed = !environment_constraint ||
-      (*environment_constraint)(environment_key_change.second);
-    if (is_allowed && updated) {
-      SetEnvironmentConstraint(atom_tag, std::move(*environment_constraint));
     };
     return is_allowed;
   };
@@ -660,66 +491,49 @@ public:
       updated_atom_constraints;
     std::vector<std::pair<Tag, std::shared_ptr<const BondConstraint>>>
       updated_bond_constraints;
-    std::vector<std::pair<Tag, std::shared_ptr<const EnvironmentConstraint>>>
-      updated_environment_constraints;
-    MolecularGraphProjection projection (molecule);
-    perturbation.ProjectMolecularGraph(projection);
-    if (MustCheckAtomConstraints() || MustCheckBondConstraints()) {
-      auto [atom_key_changes, bond_key_changes] =
-        projection.MolecularKeyChanges(molecule, MustCheckBondConstraints());
-      if (MustCheckAtomConstraints()) {
-        for (const auto& [atom_tag, atom_key_change] : atom_key_changes) {
-          auto [atom_constraint, updated] = 
-            UpdatedAtomConstraint(atom_tag, atom_key_change);
-          if (atom_constraint && !(*atom_constraint)(atom_key_change.second)) {
-            return false;
-          };
-          if (updated) {
-            updated_atom_constraints.emplace_back(
-              atom_tag, std::move(atom_constraint));
-          };
-        };       
-      };
-      if (MustCheckBondConstraints()) {
-        for (const auto& [bond_tag, bond_key_change] : bond_key_changes) {
-          auto [bond_constraint, updated] = 
-            UpdatedBondConstraint(bond_tag, bond_key_change);
-          if (bond_constraint && !(*bond_constraint)(bond_key_change.second)) {
-            return false;
-          };
-          if (updated) {
-            updated_bond_constraints.emplace_back(
-              bond_tag, std::move(bond_constraint));
-          };
-        };
-      };
-    };
-    if (MustCheckEnvironmentConstraints()) {
-      auto environment_key_changes = projection.EnvironmentKeyChanges(
-        molecule, environment_generator.GetEnvironmentRadius());
-      for (const auto& [atom_tag, ekc] : environment_key_changes) {
-        auto [environment_constraint, updated] =
-          UpdatedEnvironmentConstraint(atom_tag, ekc);
-        if (environment_constraint && !(*environment_constraint)(ekc.second)) {
+    RDKit::RWMol perturbed_molecule = perturbation(molecule);
+    if (MustCheckAtomConstraints()) {
+      auto atom_pairs = AtomPairs(molecule, perturbed_molecule);
+      for (auto [prior_atom, posterior_atom] : atom_pairs) {
+        Tag atom_tag = GetTag(prior_atom);
+        auto [atom_constraint, updated] = 
+          UpdatedAtomConstraint(atom_tag, prior_atom, posterior_atom);
+        if (atom_constraint && !(*atom_constraint)(posterior_atom)) {
           return false;
         };
         if (updated) {
-          updated_environment_constraints.emplace_back(
-            atom_tag, std::move(environment_constraint));
+          updated_atom_constraints.emplace_back(
+            atom_tag, std::move(atom_constraint));
+        };
+      };       
+    };
+    if (MustCheckBondConstraints()) {
+      auto bond_pairs = BondPairs(molecule, perturbed_molecule);
+      for (auto [prior_bond, posterior_bond] : bond_pairs) {
+        Tag bond_tag = GetTag(prior_bond);
+        auto [bond_constraint, updated] = 
+          UpdatedBondConstraint(bond_tag, prior_bond, posterior_bond);
+        if (bond_constraint && !(*bond_constraint)(posterior_bond)) {
+          return false;
+        };
+        if (updated) {
+          updated_bond_constraints.emplace_back(
+            bond_tag, std::move(bond_constraint));
+        };
+      };       
+    };
+    if (MustCheckMoleculeConstraints()) {
+      for (const auto& [molecule_constraint, _] : molecule_constraints) {
+        if (!molecule_constraint(perturbed_molecule)) {
+          return false;
         };
       };
-    };
-    if (!CyclicityConstraintsSatisfied(projection)) {
-      return false;
     };
     for (const auto& [atom_tag, atom_constraint] : updated_atom_constraints) {
       SetAtomConstraint(atom_tag, std::move(*atom_constraint));
     };
     for (const auto& [bond_tag, bond_constraint] : updated_bond_constraints) {
       SetBondConstraint(bond_tag, std::move(*bond_constraint));
-    };
-    for (const auto& [atom_tag, envc] : updated_environment_constraints) {
-      SetEnvironmentConstraint(atom_tag, std::move(*envc));
     };
     return true;
   };
@@ -732,14 +546,9 @@ public:
     return !!bond_constraint_generator;
   };
 
-  bool HasEnvironmentConstraintGenerator() const {
-    return !!environment_constraint_generator;
-  };
-
   bool HasConstraintGenerators() const {
     return atom_constraint_generator || 
-      bond_constraint_generator ||
-      environment_constraint_generator;
+      bond_constraint_generator;
   };
 
   bool MustCheckAtomConstraints() const {
@@ -750,159 +559,41 @@ public:
     return !bond_constraints.empty() || bond_constraint_generator;
   };
 
-  bool MustCheckEnvironmentConstraints() const {
-    return !environment_constraints.empty() || environment_constraint_generator;
-  };
-
-  const CircularAtomicEnvironmentGenerator& GetEnvironmentGenerator() const {
-    return environment_generator;
+  bool MustCheckMoleculeConstraints() const {
+    return !molecule_constraints.empty();
   };
 
   std::size_t Size() const {
     return atom_constraints.size() + 
       bond_constraints.size() + 
-      environment_constraints.size();
-  };
-
-  bool HasCyclicityConstraints() const {
-    return 
-      min_n_cycles > 0 || 
-      max_n_cycles < max_unsigned ||
-      min_cycle_size > 3 || 
-      max_cycle_size < max_unsigned ||
-      max_atom_cycles_membership < max_unsigned;
+      molecule_constraints.size();
   };
 
   explicit operator bool() const {
     return MustCheckAtomConstraints() ||
       MustCheckBondConstraints() ||
-      MustCheckEnvironmentConstraints() ||
-      HasCyclicityConstraints();
+      MustCheckMoleculeConstraints();
   };
 };
 
 
-bool ValenceConstraint(const AtomKey& atom_key) {
-  return IsValenceBelowMax(atom_key.atomic_number, atom_key.valence);
+bool ValenceConstraint(const RDKit::Atom* atom) {
+  return IsValenceBelowMax(atom->getAtomicNum(), ExplicitValence(atom));
 };
 
 std::optional<MolecularConstraints::AtomConstraint> ValenceConstraintGenerator(
-  const AtomKeyChange& atom_key_change) {
+  const RDKit::Atom* prior_atom, const RDKit::Atom* posterior_atom) {
+  unsigned prior_z = prior_atom ? prior_atom->getAtomicNum() : 0;
+  unsigned posterior_z = posterior_atom ? posterior_atom->getAtomicNum() : 0;
   // If the atomic number didn't change neither did the valence constraint.
-  if (atom_key_change.first.atomic_number ==
-    atom_key_change.second.atomic_number) {
+  if (prior_z == posterior_z) {
     return std::nullopt;
   };
   // Null atoms have no constraints.
-  if (atom_key_change.second == NULL_ATOM_KEY) {
+  if (!posterior_atom) {
     return nullptr;
-  } else {
-    return ValenceConstraint;
   };
-};
-
-
-class AtomKeyConstraint {
-  const ChemicalDictionary* dictionary;
-public:
-  AtomKeyConstraint(const ChemicalDictionary* dictionary) : 
-    dictionary(dictionary) {};
-  
-  bool operator()(const AtomKey& atom_key) const {
-    // Null keys correspond to deletions and are always allowed, unless 
-    // otherwise specified.
-    if (atom_key == NULL_ATOM_KEY) {
-      return true;
-    };
-    return !dictionary->IsForeignAtom(atom_key);
-  };
-};
-
-class AtomKeyConstraintGenerator {
-  const ChemicalDictionary* dictionary;
-public:
-  AtomKeyConstraintGenerator(const ChemicalDictionary* dictionary) :
-    dictionary(dictionary) {};
-
-  std::optional<MolecularConstraints::AtomConstraint> operator()(
-    const AtomKeyChange& atom_key_change) const {
-    if (atom_key_change.first == atom_key_change.second) {
-      return std::nullopt;
-    };
-    if (atom_key_change.second == NULL_ATOM_KEY) {
-      return nullptr;
-    } else {
-      return AtomKeyConstraint(dictionary);
-    };
-  };
-};
-
-
-class BondKeyConstraint {
-  const ChemicalDictionary* dictionary;
-public:
-  BondKeyConstraint(const ChemicalDictionary* dictionary) : 
-    dictionary(dictionary) {};
-  
-  bool operator()(const BondKey& bond_key) const {
-    if (bond_key == NULL_BOND_KEY) {
-      return true;
-    };
-    return !dictionary->IsForeignBond(bond_key);
-  };
-};
-
-class BondKeyConstraintGenerator {
-  const ChemicalDictionary* dictionary;
-public:
-  BondKeyConstraintGenerator(const ChemicalDictionary* dictionary) :
-    dictionary(dictionary) {};
-
-  std::optional<MolecularConstraints::BondConstraint> operator()(
-    const BondKeyChange& bond_key_change) const {
-    if (bond_key_change.first == bond_key_change.second) {
-      return std::nullopt;
-    };
-    if (bond_key_change.second == NULL_BOND_KEY) {
-      return nullptr;
-    } else {
-      return BondKeyConstraint(dictionary);
-    };
-  };
-};
-
-
-class EnvironmentKeyConstraint {
-  const ChemicalDictionary* dictionary;
-public:
-  EnvironmentKeyConstraint(const ChemicalDictionary* dictionary) : 
-    dictionary(dictionary) {};
-  
-  bool operator()(const EnvironmentKey& environment_key) const {
-    if (environment_key == NULL_ENVIRONMENT_KEY) {
-      return true;
-    };
-    return !dictionary->IsForeignEnvironment(environment_key);
-  };
-};
-
-class EnvironmentKeyConstraintGenerator {
-  const ChemicalDictionary* dictionary;
-public:
-  EnvironmentKeyConstraintGenerator(const ChemicalDictionary* dictionary) :
-    dictionary(dictionary) {};
-
-  std::optional<MolecularConstraints::EnvironmentConstraint> operator()(
-    const EnvironmentKeyChange& environment_key_change) const {
-    if (environment_key_change.first == environment_key_change.second) {
-      return std::nullopt;
-    };
-    if (environment_key_change.second == NULL_ENVIRONMENT_KEY) {
-      return nullptr;
-    } else {
-      return EnvironmentKeyConstraint(dictionary);
-    };
-  };
+  return ValenceConstraint;
 };
 
 #endif // !_MOLECULAR_CONSTRAINTS_HPP_
