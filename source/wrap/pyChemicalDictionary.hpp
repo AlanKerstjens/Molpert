@@ -7,6 +7,27 @@
 
 namespace python = boost::python;
 
+template <class Map>
+python::dict MapToDict(const Map& map) {
+  python::dict dictionary;
+  for (const auto& [key, value] : map) {
+    dictionary[key] = value;
+  };
+  return dictionary;
+};
+
+python::dict GetAtomDictionary(const ChemicalDictionary& dictionary) {
+  return MapToDict(dictionary.GetAtomDictionary());
+};
+
+python::dict GetBondDictionary(const ChemicalDictionary& dictionary) {
+  return MapToDict(dictionary.GetBondDictionary());
+};
+
+python::dict GetEnvironmentDictionary(const ChemicalDictionary& dictionary) {
+  return MapToDict(dictionary.GetEnvironmentDictionary());
+};
+
 void WrapChemicalDictionary() {
   python::class_<ChemicalDictionary>(
     "ChemicalDictionary",
@@ -45,6 +66,9 @@ void WrapChemicalDictionary() {
       python::arg("path")))
     .def("Load", &ChemicalDictionary::Load, (
       python::arg("path")))
+    .add_property("atom_dictionary", &GetAtomDictionary)
+    .add_property("bond_dictionary", &GetBondDictionary)
+    .add_property("environment_dictionary", &GetEnvironmentDictionary)
     .add_property("total_atom_frequency", 
       &ChemicalDictionary::GetTotalAtomFrequency)
     .add_property("total_bond_frequency", 
