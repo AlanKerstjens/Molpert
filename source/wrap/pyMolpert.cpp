@@ -1,3 +1,4 @@
+#include "pyValence.hpp"
 #include "pyMolecularKeys.hpp"
 #include "pyCircularAtomicEnvironment.hpp"
 #include "pyMolecularPerturbations.hpp"
@@ -30,6 +31,7 @@ BOOST_PYTHON_MODULE(molpert) {
   python::def<Tag (*)(const RDKit::Bond*)>("GetBondTag", GetTag, (
     python::arg("bond")));
 
+  WrapValence();
   WrapMolecularKeys();
   WrapCircularAtomicEnvironment();
   WrapMolecularPerturbations();
