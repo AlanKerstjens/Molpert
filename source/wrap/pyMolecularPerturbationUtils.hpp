@@ -23,6 +23,9 @@ void WrappedPartialSanitization(RDKit::ROMol& molecule) {
 };
 
 void WrapMolecularPerturbationUtils() {
+  python::def("FindSSSRIfNotInitialized", FindSSSRIfNotInitialized, (
+    python::arg("molecule")));
+
   python::def("CorrectAromaticity", WrappedCorrectAromaticity, (
     python::arg("molecule")));
 

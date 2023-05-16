@@ -161,6 +161,13 @@ void Kekulize(
   };
 };
 
+void FindSSSRIfNotInitialized(const RDKit::ROMol& molecule) {
+  const RDKit::RingInfo* ring_info = molecule.getRingInfo();
+  if (!ring_info->isInitialized()) {
+    RDKit::MolOps::findSSSR(molecule);
+  };
+};
+
 struct RingMask {
   boost::dynamic_bitset<> bonds;
   boost::dynamic_bitset<> aromatic_bonds;
