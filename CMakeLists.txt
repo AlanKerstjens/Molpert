@@ -15,7 +15,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(MOLPERT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(MOLPERT_SOURCE_DIR ${MOLPERT_ROOT_DIR}/source)
 set(MOLPERT_LIB_DIR ${MOLPERT_ROOT_DIR}/lib)
-set(MOLPERT_BIN_DIR ${MOLPERT_ROOT_DIR}/bin)
 
 # Include the library directory in the default RPATH of the targets.
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -88,24 +87,9 @@ set_target_properties(pyMolpert PROPERTIES
   OUTPUT_NAME "molpert"
 )
 
-# Define the executable targets.
-add_executable(MakeChemicalDictionary ${MOLPERT_SOURCE_DIR}/MakeChemicalDictionary.cpp)
-target_link_libraries(MakeChemicalDictionary PRIVATE
-  Molpert
-  RDKitFileParsers
-)
-
 # Specify where the libraries should be installed.
 install(
   TARGETS
     pyMolpert
   DESTINATION ${MOLPERT_LIB_DIR}
-)
-
-# Specify where the executables should be installed.
-install(
-  TARGETS
-    # MakeRandomMolecules MakeMolecularKeyDictionary PrintMolecularKeyDictionary
-    MakeChemicalDictionary
-  DESTINATION ${MOLPERT_BIN_DIR}
 )

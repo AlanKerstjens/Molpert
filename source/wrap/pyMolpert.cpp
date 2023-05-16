@@ -1,9 +1,7 @@
 #include "pyValence.hpp"
 #include "pyMolecularKeys.hpp"
-#include "pyCircularAtomicEnvironment.hpp"
 #include "pyMolecularPerturbations.hpp"
 #include "pyMolecularPerturbationUtils.hpp"
-#include "pyChemicalDictionary.hpp"
 #include "pyMolecularConstraints.hpp"
 #include "pyMoleculePerturber.hpp"
 #include "pyMoleculeHash.hpp"
@@ -33,10 +31,8 @@ BOOST_PYTHON_MODULE(molpert) {
 
   WrapValence();
   WrapMolecularKeys();
-  WrapCircularAtomicEnvironment();
   WrapMolecularPerturbations();
   WrapMolecularPerturbationUtils();
-  WrapChemicalDictionary();
   WrapMolecularConstraints();
   WrapMoleculePerturber();
   WrapMoleculeHash();
