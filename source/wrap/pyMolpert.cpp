@@ -5,6 +5,7 @@
 #include "pyMolecularConstraints.hpp"
 #include "pyMoleculePerturber.hpp"
 #include "pyMoleculeHash.hpp"
+#include "pyCircularAtomicEnvironment.hpp"
 #include "pyAddons.hpp"
 #include <boost/python.hpp>
 
@@ -36,5 +37,6 @@ BOOST_PYTHON_MODULE(molpert) {
   WrapMolecularConstraints();
   WrapMoleculePerturber();
   WrapMoleculeHash();
+  WrapCircularAtomicEnvironment();
   WrapAddons();
 };
