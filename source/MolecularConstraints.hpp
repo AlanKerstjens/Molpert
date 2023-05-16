@@ -80,15 +80,13 @@ typedef std::function<bool(const RDKit::ROMol*)> MoleculeConstraint;
 
 #endif
 
-// Constraint generators compare two atoms or bonds (prior and  posterior) and, 
-// if pertinent, generate new constraints for the posterior one. The return 
-// type is a std::optional that should be empty if the constraint hasn't 
-// changed. If the constraint has been erased it should be set to nullptr.
-typedef std::function<
-  std::optional<AtomConstraint>(const RDKit::Atom*, const RDKit::Atom*)
+// Constraint generators compare two atoms or bonds (prior and  posterior) and 
+// generate new constraints for the posterior one. The return type is a 
+// Constraint that should evaluate to false (nullptr or None) if no constraint 
+// applies or the constraint has been erased.
+typedef std::function<AtomConstraint(const RDKit::Atom*, const RDKit::Atom*)
 > AtomConstraintGenerator;
-typedef std::function<
-  std::optional<BondConstraint>(const RDKit::Bond*, const RDKit::Bond*)
+typedef std::function<BondConstraint(const RDKit::Bond*, const RDKit::Bond*)
 > BondConstraintGenerator;
 
 
@@ -172,16 +170,10 @@ private:
       return {tag, updated_constraint, false};
     };
     // If not, we can try generating a new constraint.
-    std::optional<Constraint> new_constraint = 
-      constraint_generator(prior, posterior);
-    // If no new constraint was generated we don't update anything.
-    if (!new_constraint) {
-      updated_constraint.reset(constraint, boost::null_deleter());
-      return {tag, updated_constraint, false};
-    };
+    Constraint new_constraint = constraint_generator(prior, posterior);
     // If a non-null constraint was generated take ownership of it.
-    if (*new_constraint) {
-      updated_constraint.reset(new Constraint(std::move(*new_constraint)));
+    if (new_constraint) {
+      updated_constraint.reset(new Constraint(std::move(new_constraint)));
     };
     // Return the new constraint.
     return {tag, updated_constraint, true};
@@ -248,12 +240,11 @@ public:
     if (!atom_constraint_generator) {
       return;
     };
-    std::optional<AtomConstraint> atom_constraint = 
-      atom_constraint_generator(nullptr, atom);
+    AtomConstraint atom_constraint = atom_constraint_generator(nullptr, atom);
     if (!atom_constraint) {
       return;
     };
-    SetAtomConstraint(GetTag(atom), std::move(*atom_constraint));
+    SetAtomConstraint(GetTag(atom), std::move(atom_constraint));
   };
 
   void GenerateAtomConstraints(const RDKit::ROMol& molecule) {
@@ -269,12 +260,11 @@ public:
     if (!bond_constraint_generator) {
       return;
     };
-    std::optional<BondConstraint> bond_constraint = 
-      bond_constraint_generator(nullptr, bond);
+    BondConstraint bond_constraint = bond_constraint_generator(nullptr, bond);
     if (!bond_constraint) {
       return;
     };
-    SetBondConstraint(GetTag(bond), std::move(*bond_constraint));
+    SetBondConstraint(GetTag(bond), std::move(bond_constraint));
   };
 
   void GenerateBondConstraints(const RDKit::ROMol& molecule) {
@@ -315,6 +305,9 @@ public:
     if (!updated) {
       return false;
     };
+    if (!atom_constraint) {
+      return ClearAtomConstraint(atom_tag);
+    };
     return SetAtomConstraint(atom_tag, std::move(*atom_constraint));
   };
 
@@ -325,6 +318,9 @@ public:
       prior_bond, posterior_bond);
     if (!updated) {
       false;
+    };
+    if (!bond_constraint) {
+      return ClearBondConstraint(bond_tag);
     };
     return SetBondConstraint(bond_tag, std::move(*bond_constraint));
   };
@@ -520,12 +516,17 @@ public:
     const RDKit::Atom* posterior_atom) {
     auto [atom_tag, atom_constraint, updated] = 
       UpdatedAtomConstraint(prior_atom, posterior_atom);
-    bool is_allowed = 
-      !atom_constraint || (*atom_constraint)(posterior_atom);
-    if (is_allowed && updated) {
-      SetAtomConstraint(atom_tag, std::move(*atom_constraint));
+    if (!atom_constraint) {
+      ClearAtomConstraint(atom_tag);
+      return true;
     };
-    return is_allowed;
+    if ((*atom_constraint)(posterior_atom)) {
+      if (updated) {
+        SetAtomConstraint(atom_tag, std::move(*atom_constraint));
+      };
+      return true;
+    };
+    return false;
   };
 
   bool UpdateIfAllowed(
@@ -533,12 +534,17 @@ public:
     const RDKit::Bond* posterior_bond) {
     auto [bond_tag, bond_constraint, updated] = 
       UpdatedBondConstraint(prior_bond, posterior_bond);
-    bool is_allowed = 
-      !bond_constraint || (*bond_constraint)(posterior_bond);
-    if (is_allowed && updated) {
-      SetBondConstraint(bond_tag, std::move(*bond_constraint));
+    if (!bond_constraint) {
+      ClearBondConstraint(bond_tag);
+      return true;
     };
-    return is_allowed;
+    if ((*bond_constraint)(posterior_bond)) {
+      if (updated) {
+        SetBondConstraint(bond_tag, std::move(*bond_constraint));
+      };
+      return true;
+    };
+    return false;
   };
 
   bool UpdateIfAllowed(
@@ -588,10 +594,18 @@ public:
       };
     };
     for (const auto& [atom_tag, atom_constraint] : updated_atom_constraints) {
-      SetAtomConstraint(atom_tag, std::move(*atom_constraint));
+      if (atom_constraint) {
+        SetAtomConstraint(atom_tag, std::move(*atom_constraint));
+      } else {
+        ClearAtomConstraint(atom_tag);
+      };
     };
     for (const auto& [bond_tag, bond_constraint] : updated_bond_constraints) {
-      SetBondConstraint(bond_tag, std::move(*bond_constraint));
+      if (bond_constraint) {
+        SetBondConstraint(bond_tag, std::move(*bond_constraint));
+      } else {
+        ClearBondConstraint(bond_tag);
+      };
     };
     return true;
   };

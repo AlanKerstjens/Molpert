@@ -76,10 +76,8 @@ void SetMoleculeConstraintWrapper(
 
 void WrapMolecularConstraints() {
   FunctionConverter()
-    .Register<std::optional<AtomConstraint>(
-      const RDKit::Atom*, const RDKit::Atom*)>()
-    .Register<std::optional<BondConstraint>(
-      const RDKit::Bond*, const RDKit::Bond*)>();
+    .Register<AtomConstraint(const RDKit::Atom*, const RDKit::Atom*)>()
+    .Register<BondConstraint(const RDKit::Bond*, const RDKit::Bond*)>();
 
   python::class_ constraints = python::class_<MolecularConstraints>(
     "MolecularConstraints", python::init())
@@ -124,8 +122,8 @@ void WrapMolecularConstraints() {
     python::arg("prior_bond"),
     python::arg("posterior_bond")))
   .def("UpdateConstraints", &MolecularConstraints::UpdateConstraints, (
-    python::arg("molecule"),
-    python::arg("perturbation")))
+    python::arg("perturbation"),
+    python::arg("molecule")))
   .def("ClearAtomConstraint", &MolecularConstraints::ClearAtomConstraint, (
     python::arg("atom_tag"),
     python::arg("clear_static") = false))
