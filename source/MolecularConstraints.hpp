@@ -236,6 +236,16 @@ public:
     };
   };
 
+  void SetAtomConstraintGenerator(
+    const AtomConstraintGenerator& new_atom_constraint_generator) {
+    atom_constraint_generator = new_atom_constraint_generator;
+  };
+
+  void SetBondConstraintGenerator(
+    const BondConstraintGenerator& new_bond_constraint_generator) {
+    bond_constraint_generator = new_bond_constraint_generator;
+  };
+
   void GenerateAtomConstraint(const RDKit::Atom* atom) {
     if (!atom_constraint_generator) {
       return;

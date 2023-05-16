@@ -74,12 +74,25 @@ void SetMoleculeConstraintWrapper(
     ConstraintWrapper<const RDKit::ROMol*>(molecule_constraint), make_static);
 };
 
+std::shared_ptr<MolecularConstraints> MolecularConstraintsFactory(
+  const boost::python::object& atom_constraint_generator,
+  const boost::python::object& bond_constraint_generator) {
+  std::shared_ptr<MolecularConstraints> constraints (new MolecularConstraints());
+  if (!atom_constraint_generator.is_none()) {
+    constraints->SetAtomConstraintGenerator(atom_constraint_generator);
+  };
+  if (!bond_constraint_generator.is_none()) {
+    constraints->SetBondConstraintGenerator(bond_constraint_generator);
+  };
+  return constraints;
+};
+
 void WrapMolecularConstraints() {
   FunctionConverter()
     .Register<AtomConstraint(const RDKit::Atom*, const RDKit::Atom*)>()
     .Register<BondConstraint(const RDKit::Bond*, const RDKit::Bond*)>();
 
-  python::class_ constraints = python::class_<MolecularConstraints>(
+  python::class_<MolecularConstraints, std::shared_ptr<MolecularConstraints>>(
     "MolecularConstraints", python::init())
   .def(python::init<
     const AtomConstraintGenerator&>((
@@ -87,9 +100,8 @@ void WrapMolecularConstraints() {
   .def(python::init<
     const BondConstraintGenerator&>((
     python::arg("bond_constraint_generator"))))
-  .def(python::init<
-    const AtomConstraintGenerator&,
-    const BondConstraintGenerator&>((
+  .def("__init__", python::make_constructor(&MolecularConstraintsFactory,
+    python::default_call_policies(), (
     python::arg("atom_constraint_generator"),
     python::arg("bond_constraint_generator"))))
   .def("SetAtomConstraint", SetAtomConstraintWrapper, (
