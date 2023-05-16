@@ -484,7 +484,7 @@ public:
       };
       auto perturbation = std::make_shared<AtomicNumberChange>(
         atom_idx, atomic_number);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       return perturbation;
@@ -527,7 +527,7 @@ public:
       };
       auto perturbation = std::make_shared<AtomicNumberChange>(
         atom_idx, atomic_number);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       queue.push(perturbation);
@@ -561,7 +561,7 @@ public:
       };
       auto perturbation = std::make_shared<FormalChargeChange>(
         atom_idx, formal_charge);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       return perturbation;
@@ -601,7 +601,7 @@ public:
       };
       auto perturbation = std::make_shared<FormalChargeChange>(
         atom_idx, formal_charge);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       queue.push(perturbation);
@@ -635,7 +635,7 @@ public:
       };
       auto perturbation = std::make_shared<ExplicitHydrogensChange>(
         atom_idx, explicit_hydrogens);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       return perturbation;
@@ -675,7 +675,7 @@ public:
       };
       auto perturbation = std::make_shared<ExplicitHydrogensChange>(
         atom_idx, explicit_hydrogens);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       queue.push(perturbation);
@@ -715,7 +715,7 @@ public:
       };
       auto perturbation = std::make_shared<BondTypeChange>(
         molecule, bond_idx, bond_type);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       return perturbation;
@@ -756,7 +756,7 @@ public:
       };
       auto perturbation = std::make_shared<BondTypeChange>(
         molecule, bond_idx, bond_type);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       queue.push(perturbation);
@@ -849,7 +849,7 @@ public:
         candidate_formal_charges[odometer[n_neighbors + 1]],
         candidate_n_explicit_hydrogens[odometer[n_neighbors + 2]],
         candidate_dropped_atom_indices[odometer[n_neighbors + 3]]);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         ++odometer;
         continue;
       };
@@ -986,7 +986,7 @@ public:
         (*candidate_n_explicit_hydrogens)[odometer[n_neighbors + 2]],
         candidate_dropped_atom_indices[odometer[n_neighbors + 3]]);
       ++odometer;
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       queue.push(perturbation);
@@ -1052,7 +1052,7 @@ public:
     const MolecularConstraints* constraints = nullptr) const {
     if (CanDeleteAtomWithoutReconnection(molecule, atom_idx)) {
       auto perturbation = std::make_shared<AtomDeletion>(atom_idx);
-      if (!constraints || constraints->IsAllowed(molecule, *perturbation)) {
+      if (!constraints || constraints->IsAllowed(*perturbation, molecule)) {
         return perturbation;
       };
     };
@@ -1068,7 +1068,7 @@ public:
         molecule, atom_idx, reconnection_atom_idx,
         atom_deletion_preserve_bond_types_during_reconnection,
         default_bond_type);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       return perturbation;
@@ -1106,7 +1106,7 @@ public:
     const MolecularConstraints* constraints = nullptr) const {
     if (CanDeleteAtomWithoutReconnection(molecule, atom_idx)) {
       auto perturbation = std::make_shared<AtomDeletion>(atom_idx);
-      if (!constraints || constraints->IsAllowed(molecule, *perturbation)) {
+      if (!constraints || constraints->IsAllowed(*perturbation, molecule)) {
         queue.push(perturbation);
       };
     };
@@ -1120,7 +1120,7 @@ public:
         molecule, atom_idx, raix,
         atom_deletion_preserve_bond_types_during_reconnection,
         default_bond_type);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       queue.push(perturbation);
@@ -1165,7 +1165,7 @@ public:
       for (RDKit::Bond::BondType bond_type : candidate_bond_types) {
         auto perturbation = std::make_shared<BondInsertion>(
           molecule, begin_atom_idx, end_atom_idx, bond_type);
-        if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+        if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
           continue;
         };
         return perturbation;
@@ -1225,7 +1225,7 @@ public:
       for (RDKit::Bond::BondType bond_type : *candidate_bond_types) {
         auto perturbation = std::make_shared<BondInsertion>(
           molecule, begin_atom_idx, end_atom_idx, bond_type);
-        if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+        if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
           continue;
         };
         queue.push(perturbation);
@@ -1272,7 +1272,7 @@ public:
     if (CanDeleteBondWithoutReconnection(molecule, bond_idx)) {
       auto perturbation = std::make_shared<BondDeletion>(
         begin_atom_idx, end_atom_idx);
-      if (!constraints || constraints->IsAllowed(molecule, *perturbation)) {
+      if (!constraints || constraints->IsAllowed(*perturbation, molecule)) {
         return perturbation;
       };
     };
@@ -1284,7 +1284,7 @@ public:
           molecule, begin_atom_idx, end_atom_idx,
           reroute_begin_idx, reroute_end_idx,
           bond_deletion_preserve_bond_types_during_reroute, default_bond_type);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       return perturbation;
@@ -1329,7 +1329,7 @@ public:
     if (CanDeleteBondWithoutReconnection(molecule, bond_idx)) {
       auto perturbation = std::make_shared<BondDeletion>(
         begin_atom_idx, end_atom_idx);
-      if (!constraints || constraints->IsAllowed(molecule, *perturbation)) {
+      if (!constraints || constraints->IsAllowed(*perturbation, molecule)) {
         queue.push(perturbation);
       };
     };
@@ -1341,7 +1341,7 @@ public:
         molecule, begin_atom_idx, end_atom_idx,
         reroute_begin_idx, reroute_end_idx,
         bond_deletion_preserve_bond_types_during_reroute, default_bond_type);
-      if (constraints && !constraints->IsAllowed(molecule, *perturbation)) {
+      if (constraints && !constraints->IsAllowed(*perturbation, molecule)) {
         continue;
       };
       queue.push(perturbation);

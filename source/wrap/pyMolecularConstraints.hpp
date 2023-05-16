@@ -161,10 +161,10 @@ void WrapMolecularConstraints() {
     "IsBondChangeAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("prior_bond"),
     python::arg("posterior_bond")))
-  .def<bool (MolecularConstraints::*)(const RDKit::ROMol&, const MolecularPerturbation&) const>(
+  .def<bool (MolecularConstraints::*)(const MolecularPerturbation&, const RDKit::ROMol&) const>(
     "IsPerturbationAllowed", &MolecularConstraints::IsAllowed, (
-    python::arg("molecule"),
-    python::arg("perturbation")))
+    python::arg("perturbation"),
+    python::arg("molecule")))
   .def<bool (MolecularConstraints::*)(const RDKit::Atom*, const RDKit::Atom*)>(
     "UpdateAtomConstraintIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
     python::arg("prior_atom"),
@@ -173,10 +173,10 @@ void WrapMolecularConstraints() {
     "UpdateBondConstraintIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
     python::arg("prior_bond"),
     python::arg("posterior_bond")))
-  .def<bool (MolecularConstraints::*)(const RDKit::ROMol&, const MolecularPerturbation&)>(
+  .def<bool (MolecularConstraints::*)(const MolecularPerturbation&, const RDKit::ROMol&)>(
     "UpdateConstraintsIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
-    python::arg("molecule"),
-    python::arg("perturbation")))
+    python::arg("perturbation"),
+    python::arg("molecule")))
   .def("HasAtomConstraintGenerator", &MolecularConstraints::HasAtomConstraintGenerator)
   .def("HasBondConstraintGenerator", &MolecularConstraints::HasBondConstraintGenerator)
   .def("HasConstraintGenerators", &MolecularConstraints::HasConstraintGenerators)

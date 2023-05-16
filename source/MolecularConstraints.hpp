@@ -2,7 +2,6 @@
 #ifndef _MOLECULAR_CONSTRAINTS_HPP_
 #define _MOLECULAR_CONSTRAINTS_HPP_
 
-#include "Valence.hpp"
 #include "MolecularPerturbations.hpp"
 #include <boost/core/null_deleter.hpp>
 
@@ -331,8 +330,8 @@ public:
   };
 
   bool UpdateConstraints(
-    const RDKit::ROMol& molecule,
-    const MolecularPerturbation& perturbation) {
+    const MolecularPerturbation& perturbation,
+    const RDKit::ROMol& molecule) {
     if (!HasConstraintGenerators()) {
       return false;
     };
@@ -484,8 +483,8 @@ public:
   };
 
   bool IsAllowed(
-    const RDKit::ROMol& molecule,
-    const MolecularPerturbation& perturbation) const {
+    const MolecularPerturbation& perturbation,
+    const RDKit::ROMol& molecule) const {
     if (!(*this)) {
       return true;
     };
@@ -543,10 +542,10 @@ public:
   };
 
   bool UpdateIfAllowed(
-    const RDKit::ROMol& molecule,
-    const MolecularPerturbation& perturbation) {
+    const MolecularPerturbation& perturbation,
+    const RDKit::ROMol& molecule) {
     if (!HasConstraintGenerators()) {
-      return IsAllowed(molecule, perturbation);
+      return IsAllowed(perturbation, molecule);
     };
     std::vector<std::pair<Tag, std::shared_ptr<const AtomConstraint>>>
       updated_atom_constraints;
