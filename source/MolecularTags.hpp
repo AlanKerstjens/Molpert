@@ -235,37 +235,34 @@ AtomPairs(const RDKit::ROMol& molecule1, const RDKit::ROMol& molecule2) {
     };
   std::sort(atoms1.begin(), atoms1.end(), compare_tags);
   std::sort(atoms2.begin(), atoms2.end(), compare_tags);
-  auto it1 = atoms1.cbegin(), last_it1 = atoms1.cend() - 1;
-  auto it2 = atoms2.cbegin(), last_it2 = atoms2.cend() - 1;
-  unsigned n = 2;
-  while (n) {
+  auto it1 = atoms1.cbegin(), end_it1 = atoms1.cend();
+  auto it2 = atoms2.cbegin(), end_it2 = atoms2.cend();
+  while (true) {
+    bool at_end1 = it1 == end_it1;
+    bool at_end2 = it2 == end_it2;
+    if (at_end1 && at_end2) {
+      break;
+    } else if (at_end1) {
+      // Something that exists in 2 doesn't exist in 1
+      atom_pairs.emplace_back(nullptr, it2->second);
+      ++it2;
+      continue;
+    } else if (at_end2) {
+      // Something that exists in 1 doesn't exist in 2
+      atom_pairs.emplace_back(it1->second, nullptr);
+      ++it1;
+      continue;
+    };
     if (compare_tags(*it1, *it2)) {
-      // Something that exists in 2 doesn't exist in 1
-      if (it1 == last_it1) {
-        atom_pairs.emplace_back(nullptr, it2->second);
-        if (it2 != last_it2) { ++it2; };
-      // Something that exists in 1 doesn't exist in 2
-      } else {
-        atom_pairs.emplace_back(it1->second, nullptr);
-        ++it1;
-      };
+      atom_pairs.emplace_back(it1->second, nullptr);
+      ++it1;
     } else if (compare_tags(*it2, *it1)) {
-      // Something that exists in 1 doesn't exist in 2
-      if (it2 == last_it2) {
-        atom_pairs.emplace_back(it1->second, nullptr);
-        if (it1 != last_it1) { ++it1; };
-      // Something that exists in 2 doesn't exist in 1
-      } else {
-        atom_pairs.emplace_back(nullptr, it2->second);
-        ++it2;
-      };
+      atom_pairs.emplace_back(nullptr, it2->second);
+      ++it2;
     } else {
       atom_pairs.emplace_back(it1->second, it2->second);
-      if (it1 != last_it1) { ++it1; };
-      if (it2 != last_it2) { ++it2; };
-    };
-    if (it1 == last_it1 && it2 == last_it2) {
-      --n;
+      ++it1;
+      ++it2;
     };
   };
   return atom_pairs;
@@ -294,35 +291,37 @@ BondPairs(const RDKit::ROMol& molecule1, const RDKit::ROMol& molecule2) {
     };
   std::sort(bonds1.begin(), bonds1.end(), compare_tags);
   std::sort(bonds2.begin(), bonds2.end(), compare_tags);
-  auto it1 = bonds1.cbegin(), last_it1 = bonds1.cend() - 1;
-  auto it2 = bonds2.cbegin(), last_it2 = bonds2.cend() - 1;
-  unsigned n = 2;
-  while (n) {
+  auto it1 = bonds1.cbegin(), end_it1 = bonds1.cend();
+  auto it2 = bonds2.cbegin(), end_it2 = bonds2.cend();
+  while (true) {
+    bool at_end1 = it1 == end_it1;
+    bool at_end2 = it2 == end_it2;
+    if (at_end1 && at_end2) {
+      break;
+    } else if (at_end1) {
+      // Something that exists in 2 doesn't exist in 1
+      bond_pairs.emplace_back(nullptr, it2->second);
+      ++it2;
+      continue;
+    } else if (at_end2) {
+      // Something that exists in 1 doesn't exist in 2
+      bond_pairs.emplace_back(it1->second, nullptr);
+      ++it1;
+      continue;
+    };
     if (compare_tags(*it1, *it2)) {
-      if (it1 == last_it1) {
-        bond_pairs.emplace_back(nullptr, it2->second);
-        if (it2 != last_it2) { ++it2; };
-      } else {
-        bond_pairs.emplace_back(it1->second, nullptr);
-        ++it1;
-      };
+      bond_pairs.emplace_back(it1->second, nullptr);
+      ++it1;
     } else if (compare_tags(*it2, *it1)) {
-      if (it2 == last_it2) {
-        bond_pairs.emplace_back(it1->second, nullptr);
-        if (it1 != last_it1) { ++it1; };
-      } else {
-        bond_pairs.emplace_back(nullptr, it2->second);
-        ++it2;
-      };
+      bond_pairs.emplace_back(nullptr, it2->second);
+      ++it2;
     } else {
       bond_pairs.emplace_back(it1->second, it2->second);
-      if (it1 != last_it1) { ++it1; };
-      if (it2 != last_it2) { ++it2; };
-    };
-    if (it1 == last_it1 && it2 == last_it2) {
-      --n;
+      ++it1;
+      ++it2;
     };
   };
+
   return bond_pairs;
 };
 
