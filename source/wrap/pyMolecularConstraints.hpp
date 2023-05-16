@@ -44,53 +44,67 @@ struct FunctionConverter {
   };
 };
 
-// The RDKit only registered a RDKit::ROMol* pointer to-python converter,
-// which corresponds to the rdchem.Mol class. All functions expecting a
-// rdchem.Mol, including potential MoleculeConstraints, are actually expecting 
-// a RDKit::ROMol*. We can register a shim RDKit::ROMol to rdchem.Mol converter.
-struct ROMolConverter {
-  static PyObject* convert(const RDKit::ROMol& molecule) {
-    boost::python::object object (boost::python::ptr(&molecule));
-    return boost::python::incref(object.ptr());
-  };
+bool SetAtomConstraintWrapper(
+  MolecularConstraints& constraints,
+  Tag atom_tag,
+  const boost::python::object& atom_constraint,
+  bool replace = true,
+  bool make_static = false) {
+  return constraints.SetAtomConstraint(
+    atom_tag, ConstraintWrapper<const RDKit::Atom*>(atom_constraint), 
+    replace, make_static);
+};
+
+bool SetBondConstraintWrapper(
+  MolecularConstraints& constraints,
+  Tag bond_tag,
+  const boost::python::object& bond_constraint,
+  bool replace = true,
+  bool make_static = false) {
+  return constraints.SetBondConstraint(
+    bond_tag, ConstraintWrapper<const RDKit::Bond*>(bond_constraint), 
+    replace, make_static);
+};
+
+void SetMoleculeConstraintWrapper(
+  MolecularConstraints& constraints,
+  const boost::python::object& molecule_constraint,
+  bool make_static = false) {
+  constraints.SetMoleculeConstraint(
+    ConstraintWrapper<const RDKit::ROMol*>(molecule_constraint), make_static);
 };
 
 void WrapMolecularConstraints() {
   FunctionConverter()
-    .Register<bool(const RDKit::Atom*)>()
-    .Register<bool(const RDKit::Bond*)>()
-    .Register<bool(const RDKit::ROMol&)>()
-    .Register<std::optional<MolecularConstraints::AtomConstraint>(
+    .Register<std::optional<AtomConstraint>(
       const RDKit::Atom*, const RDKit::Atom*)>()
-    .Register<std::optional<MolecularConstraints::BondConstraint>(
+    .Register<std::optional<BondConstraint>(
       const RDKit::Bond*, const RDKit::Bond*)>();
-
-  python::to_python_converter<RDKit::ROMol, ROMolConverter>();
 
   python::class_ constraints = python::class_<MolecularConstraints>(
     "MolecularConstraints", python::init())
   .def(python::init<
-    const MolecularConstraints::AtomConstraintGenerator&>((
+    const AtomConstraintGenerator&>((
     python::arg("atom_constraint_generator"))))
   .def(python::init<
-    const MolecularConstraints::BondConstraintGenerator&>((
+    const BondConstraintGenerator&>((
     python::arg("bond_constraint_generator"))))
   .def(python::init<
-    const MolecularConstraints::AtomConstraintGenerator&,
-    const MolecularConstraints::BondConstraintGenerator&>((
+    const AtomConstraintGenerator&,
+    const BondConstraintGenerator&>((
     python::arg("atom_constraint_generator"),
     python::arg("bond_constraint_generator"))))
-  .def("SetAtomConstraint", &MolecularConstraints::SetAtomConstraint, (
+  .def("SetAtomConstraint", SetAtomConstraintWrapper, (
     python::arg("atom_tag"), 
     python::arg("atom_constraint"), 
     python::arg("replace") = true,
     python::arg("make_static") = false))
-  .def("SetBondConstraint", &MolecularConstraints::SetBondConstraint, (
+  .def("SetBondConstraint", SetBondConstraintWrapper, (
     python::arg("bond_tag"), 
     python::arg("bond_constraint"), 
     python::arg("replace") = true,
     python::arg("make_static") = false))
-  .def("SetMoleculeConstraint", &MolecularConstraints::SetMoleculeConstraint, (
+  .def("SetMoleculeConstraint", SetMoleculeConstraintWrapper, (
     python::arg("molecule_constraint"), 
     python::arg("make_static") = false))
   .def("GenerateAtomConstraint", &MolecularConstraints::GenerateAtomConstraint, (
@@ -104,11 +118,9 @@ void WrapMolecularConstraints() {
   .def("GenerateConstraints", &MolecularConstraints::GenerateConstraints, (
     python::arg("molecule")))
   .def("UpdateAtomConstraint", &MolecularConstraints::UpdateAtomConstraint, (
-    python::arg("atom_tag"),
     python::arg("prior_atom"),
     python::arg("posterior_atom")))
   .def("UpdateBondConstraint", &MolecularConstraints::UpdateBondConstraint, (
-    python::arg("bond_tag"),
     python::arg("prior_bond"),
     python::arg("posterior_bond")))
   .def("UpdateConstraints", &MolecularConstraints::UpdateConstraints, (
@@ -141,28 +153,24 @@ void WrapMolecularConstraints() {
     "IsBondAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("bond_tag"),
     python::arg("bond")))
-  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Atom*, const RDKit::Atom*) const>(
+  .def<bool (MolecularConstraints::*)(const RDKit::Atom*, const RDKit::Atom*) const>(
     "IsAtomChangeAllowed", &MolecularConstraints::IsAllowed, (
-    python::arg("atom_tag"),
     python::arg("prior_atom"),
     python::arg("posterior_atom")))
-  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Bond*, const RDKit::Bond*) const>(
+  .def<bool (MolecularConstraints::*)(const RDKit::Bond*, const RDKit::Bond*) const>(
     "IsBondChangeAllowed", &MolecularConstraints::IsAllowed, (
-    python::arg("bond_tag"),
     python::arg("prior_bond"),
     python::arg("posterior_bond")))
   .def<bool (MolecularConstraints::*)(const RDKit::ROMol&, const MolecularPerturbation&) const>(
     "IsPerturbationAllowed", &MolecularConstraints::IsAllowed, (
     python::arg("molecule"),
     python::arg("perturbation")))
-  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Atom*, const RDKit::Atom*)>(
+  .def<bool (MolecularConstraints::*)(const RDKit::Atom*, const RDKit::Atom*)>(
     "UpdateAtomConstraintIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
-    python::arg("atom_tag"),
     python::arg("prior_atom"),
     python::arg("posterior_atom")))
-  .def<bool (MolecularConstraints::*)(Tag, const RDKit::Bond*, const RDKit::Bond*)>(
+  .def<bool (MolecularConstraints::*)(const RDKit::Bond*, const RDKit::Bond*)>(
     "UpdateBondConstraintIfAllowed", &MolecularConstraints::UpdateIfAllowed, (
-    python::arg("bond_tag"),
     python::arg("prior_bond"),
     python::arg("posterior_bond")))
   .def<bool (MolecularConstraints::*)(const RDKit::ROMol&, const MolecularPerturbation&)>(

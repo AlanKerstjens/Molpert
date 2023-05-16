@@ -35,6 +35,12 @@ endif()
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 find_package(Boost REQUIRED COMPONENTS serialization python)
 
+# Enable conditional compilation of Python bindings
+option(BUILD_PYTHON_BINDINGS "Enable Python binding compilation" ON)
+if(BUILD_PYTHON_BINDINGS)
+  add_definitions(-DBUILD_PYTHON_BINDINGS)
+endif()
+
 # Define the library targets.
 add_library(Molpert INTERFACE)
 

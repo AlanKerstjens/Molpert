@@ -6,28 +6,94 @@
 #include "MolecularPerturbations.hpp"
 #include <boost/core/null_deleter.hpp>
 
-class MolecularConstraints {
-public:
-  // Given an atom, bond or molecule a constraint evaluates if it is allowed 
-  // (true) or not (false).
-  typedef std::function<bool(const RDKit::Atom*)> AtomConstraint;
-  typedef std::function<bool(const RDKit::Bond*)> BondConstraint;
-  typedef std::function<bool(const RDKit::ROMol&)> MoleculeConstraint;
-  // Built-in constraint types.
-  enum class AtomConstraintType {Valence};
-  // Constraint generators compare two atoms, bonds or molecules (prior and 
-  // posterior) and, if pertinent, generate new constraints for the posterior 
-  // one. The return type is a std::optional that should be empty if the 
-  // constraint hasn't changed. If the constraint has been erased it should be 
-  // set to nullptr.
-  typedef std::function<
-    std::optional<AtomConstraint>(const RDKit::Atom*, const RDKit::Atom*)
-  > AtomConstraintGenerator;
-  typedef std::function<
-    std::optional<BondConstraint>(const RDKit::Bond*, const RDKit::Bond*)
-  > BondConstraintGenerator;
+#ifdef BUILD_PYTHON_BINDINGS
 
-private:
+#include <boost/python.hpp>
+
+// Our constraints may be C++ functions (i.e. std::function) or Python functions 
+// (i.e. a callable boost::python::object). They take as input a pointer, namely
+// a const RDKit::Atom* or const RDKit::Bond*. To quote the Boost.Python
+// documentation: "Normally, when passing pointers to Python callbacks, the 
+// pointee is copied to ensure that the Python object never holds a dangling 
+// reference". This means that the RDKit::Atom and RDKit::Bond copy constructors 
+// are invoked. These copy constructors DO NOT copy the pointer to the owning 
+// molecule, which makes the copies virtually useless. "To specify that the new 
+// Python object should merely contain a copy of a pointer p, the user can pass 
+// ptr(p) instead of passing p directly". This wrapper class allows us to store 
+// a Python callback and to pass the pointer as described.
+template <class T>
+class ConstraintWrapper {
+  typedef std::function<bool(const T&)> CPPConstraint;
+  typedef boost::python::object PythonConstraint;
+
+  std::variant<CPPConstraint, PythonConstraint> constraint;
+
+public:
+  ConstraintWrapper(
+    const CPPConstraint& function) : 
+    constraint(function) {
+  };
+  ConstraintWrapper(
+    const PythonConstraint& object) {
+    if (object.is_none()) {
+      constraint = nullptr;
+      return;
+    };
+    if (!PyCallable_Check(object.ptr())) {
+      PyErr_SetString(PyExc_TypeError, "Expected a callable object");
+      throw boost::python::error_already_set();
+    };
+    constraint = object;
+  };
+
+  bool operator()(const T& t) const {
+    if (std::holds_alternative<CPPConstraint>(constraint)) {
+      const CPPConstraint& c = std::get<CPPConstraint>(constraint);
+      return c(t);
+    };
+    const PythonConstraint& c = std::get<PythonConstraint>(constraint);
+    boost::python::object result = c(boost::python::ptr(t));
+    return boost::python::extract<bool>(result);
+  };
+
+  explicit operator bool() const {
+    if (std::holds_alternative<CPPConstraint>(constraint)) {
+      const CPPConstraint& c = std::get<CPPConstraint>(constraint);
+      return !!c;
+    };
+    const PythonConstraint& c = std::get<PythonConstraint>(constraint);
+    return !c.is_none();
+  };
+
+};
+
+typedef ConstraintWrapper<const RDKit::Atom*> AtomConstraint;
+typedef ConstraintWrapper<const RDKit::Bond*> BondConstraint;
+typedef ConstraintWrapper<const RDKit::ROMol*> MoleculeConstraint;
+
+#else
+
+// Evaluates an atom, bond or molecule and returns a boolean indicating if it's
+// allowed (true) or not (false).
+typedef std::function<bool(const RDKit::Atom*)> AtomConstraint;
+typedef std::function<bool(const RDKit::Bond*)> BondConstraint;
+typedef std::function<bool(const RDKit::ROMol*)> MoleculeConstraint;
+
+#endif
+
+// Constraint generators compare two atoms or bonds (prior and  posterior) and, 
+// if pertinent, generate new constraints for the posterior one. The return 
+// type is a std::optional that should be empty if the constraint hasn't 
+// changed. If the constraint has been erased it should be set to nullptr.
+typedef std::function<
+  std::optional<AtomConstraint>(const RDKit::Atom*, const RDKit::Atom*)
+> AtomConstraintGenerator;
+typedef std::function<
+  std::optional<BondConstraint>(const RDKit::Bond*, const RDKit::Bond*)
+> BondConstraintGenerator;
+
+
+class MolecularConstraints {
   // The bool in the value is a "static" flag.
   // When set the constraint won't be settable or updateable.
   std::map<Tag, std::pair<AtomConstraint, bool>> atom_constraints;
@@ -78,30 +144,33 @@ private:
   };
 
   template <class T, class Constraint, class ConstraintGenerator>
-  std::pair<std::shared_ptr<const Constraint>, bool> UpdatedConstraint(
-    Tag tag,
+  std::tuple<Tag, std::shared_ptr<const Constraint>, bool> UpdatedConstraint(
     const T* prior,
     const T* posterior,
     const std::map<Tag, std::pair<Constraint, bool>>& constraints,
     const ConstraintGenerator& constraint_generator) const {
+    assert(prior || posterior); // If both are null something went wrong.
     std::shared_ptr<const Constraint> updated_constraint;
+    Tag tag = prior ? GetTag(prior) : GetTag(posterior);
     // Null posteriors don't get constraints.
-    if (prior && !posterior) {
-      return {updated_constraint, true};
+    if (!posterior) {
+      return {tag, updated_constraint, true};
     };
-    // Check if we already have a constraint for this tag.
+    // Check if we already had a constraint for the prior.
     const Constraint* constraint = nullptr;
     bool is_static = false;
-    auto it = constraints.find(tag);
-    if (it != constraints.cend()) {
-      constraint = &it->second.first;
-      is_static = it->second.second;
+    if (prior) {
+      auto it = constraints.find(tag);
+      if (it != constraints.cend()) {
+        constraint = &it->second.first;
+        is_static = it->second.second;
+      };
     };
     // If the existing constraint is static or we don't have a constraint
     // generator we return the existing constraint, which may be null.
     if (is_static || !constraint_generator) {
       updated_constraint.reset(constraint, boost::null_deleter());
-      return {updated_constraint, false};
+      return {tag, updated_constraint, false};
     };
     // If not, we can try generating a new constraint.
     std::optional<Constraint> new_constraint = 
@@ -109,14 +178,14 @@ private:
     // If no new constraint was generated we don't update anything.
     if (!new_constraint) {
       updated_constraint.reset(constraint, boost::null_deleter());
-      return {updated_constraint, false};
+      return {tag, updated_constraint, false};
     };
     // If a non-null constraint was generated take ownership of it.
     if (*new_constraint) {
       updated_constraint.reset(new Constraint(std::move(*new_constraint)));
     };
     // Return the new constraint.
-    return {updated_constraint, true};
+    return {tag, updated_constraint, true};
   };
 
   template <class Constraint>
@@ -171,7 +240,9 @@ public:
   void SetMoleculeConstraint(
     const MoleculeConstraint& molecule_constraint,
     bool make_static = false) {
-    molecule_constraints.emplace_back(molecule_constraint, make_static);
+    if (molecule_constraint) {
+      molecule_constraints.emplace_back(molecule_constraint, make_static);
+    };
   };
 
   void GenerateAtomConstraint(const RDKit::Atom* atom) {
@@ -221,30 +292,27 @@ public:
     GenerateBondConstraints(molecule);
   };
 
-  std::pair<std::shared_ptr<const AtomConstraint>, bool>
+  std::tuple<Tag, std::shared_ptr<const AtomConstraint>, bool>
   UpdatedAtomConstraint(
-    Tag atom_tag,
     const RDKit::Atom* prior_atom,
     const RDKit::Atom* posterior_atom) const {
-    return UpdatedConstraint(atom_tag, prior_atom, posterior_atom, 
+    return UpdatedConstraint(prior_atom, posterior_atom, 
       atom_constraints, atom_constraint_generator);
   };
 
-  std::pair<std::shared_ptr<const BondConstraint>, bool>
+  std::tuple<Tag, std::shared_ptr<const BondConstraint>, bool>
   UpdatedBondConstraint(
-    Tag bond_tag,
     const RDKit::Bond* prior_bond, 
     const RDKit::Bond* posterior_bond) const {
-    return UpdatedConstraint(bond_tag, prior_bond, posterior_bond,
+    return UpdatedConstraint(prior_bond, posterior_bond,
       bond_constraints, bond_constraint_generator);
   };
 
   bool UpdateAtomConstraint(
-    Tag atom_tag,
     const RDKit::Atom* prior_atom,
     const RDKit::Atom* posterior_atom) {
-    auto [atom_constraint, updated] = UpdatedAtomConstraint(
-      atom_tag, prior_atom, posterior_atom);
+    auto [atom_tag, atom_constraint, updated] = UpdatedAtomConstraint(
+      prior_atom, posterior_atom);
     if (!updated) {
       return false;
     };
@@ -252,11 +320,10 @@ public:
   };
 
   bool UpdateBondConstraint(
-    Tag bond_tag,
     const RDKit::Bond* prior_bond,
     const RDKit::Bond* posterior_bond) {
-    auto [bond_constraint, updated] = UpdatedBondConstraint(
-      bond_tag, prior_bond, posterior_bond);
+    auto [bond_tag, bond_constraint, updated] = UpdatedBondConstraint(
+      prior_bond, posterior_bond);
     if (!updated) {
       false;
     };
@@ -274,15 +341,13 @@ public:
     if (atom_constraint_generator) {
       auto atom_pairs = AtomPairs(molecule, perturbed_molecule);
       for (auto [prior_atom, posterior_atom] : atom_pairs) {
-        n_updated_keys += UpdateAtomConstraint(
-          GetTag(prior_atom), prior_atom, posterior_atom);
+        n_updated_keys += UpdateAtomConstraint(prior_atom, posterior_atom);
       };
     };
     if (bond_constraint_generator) {
       auto bond_pairs = BondPairs(molecule, perturbed_molecule);
       for (auto [prior_bond, posterior_bond] : bond_pairs) {
-        n_updated_keys += UpdateBondConstraint(
-          GetTag(prior_bond), prior_bond, posterior_bond);
+        n_updated_keys += UpdateBondConstraint(prior_bond, posterior_bond);
       };   
     };
     return n_updated_keys;
@@ -403,20 +468,18 @@ public:
   };
 
   bool IsAllowed(
-    Tag atom_tag,
     const RDKit::Atom* prior_atom,
     const RDKit::Atom* posterior_atom) const {
-    auto [atom_constraint, updated] = UpdatedAtomConstraint(
-      atom_tag, prior_atom, posterior_atom);
+    auto [atom_tag, atom_constraint, updated] = UpdatedAtomConstraint(
+      prior_atom, posterior_atom);
     return !atom_constraint || (*atom_constraint)(posterior_atom);
   };
 
   bool IsAllowed(
-    Tag bond_tag,
     const RDKit::Bond* prior_bond,
     const RDKit::Bond* posterior_bond) const {
-    auto [bond_constraint, updated] = UpdatedBondConstraint(
-      bond_tag, prior_bond, posterior_bond);
+    auto [bond_tag, bond_constraint, updated] = UpdatedBondConstraint(
+      prior_bond, posterior_bond);
     return !bond_constraint || (*bond_constraint)(posterior_bond);
   };
 
@@ -430,7 +493,7 @@ public:
     if (MustCheckAtomConstraints()) {
       auto atom_pairs = AtomPairs(molecule, perturbed_molecule);
       for (auto [prior_atom, posterior_atom] : atom_pairs) {
-        if (!IsAllowed(GetTag(prior_atom), prior_atom, posterior_atom)) {
+        if (!IsAllowed(prior_atom, posterior_atom)) {
           return false;
         };
       };
@@ -438,14 +501,14 @@ public:
     if (MustCheckBondConstraints()) {
       auto bond_pairs = BondPairs(molecule, perturbed_molecule);
       for (auto [prior_bond, posterior_bond] : bond_pairs) {
-        if (!IsAllowed(GetTag(prior_bond), prior_bond, posterior_bond)) {
+        if (!IsAllowed(prior_bond, posterior_bond)) {
           return false;
         };
       };
     };
     if (MustCheckMoleculeConstraints()) {
       for (const auto& [molecule_constraint, _] : molecule_constraints) {
-        if (!molecule_constraint(perturbed_molecule)) {
+        if (!molecule_constraint(&perturbed_molecule)) {
           return false;
         };
       };
@@ -454,11 +517,10 @@ public:
   };
 
   bool UpdateIfAllowed(
-    Tag atom_tag,
     const RDKit::Atom* prior_atom,
     const RDKit::Atom* posterior_atom) {
-    auto [atom_constraint, updated] = 
-      UpdatedAtomConstraint(atom_tag, prior_atom, posterior_atom);
+    auto [atom_tag, atom_constraint, updated] = 
+      UpdatedAtomConstraint(prior_atom, posterior_atom);
     bool is_allowed = 
       !atom_constraint || (*atom_constraint)(posterior_atom);
     if (is_allowed && updated) {
@@ -468,11 +530,10 @@ public:
   };
 
   bool UpdateIfAllowed(
-    Tag bond_tag,
     const RDKit::Bond* prior_bond,
     const RDKit::Bond* posterior_bond) {
-    auto [bond_constraint, updated] = 
-      UpdatedBondConstraint(bond_tag, prior_bond, posterior_bond);
+    auto [bond_tag, bond_constraint, updated] = 
+      UpdatedBondConstraint(prior_bond, posterior_bond);
     bool is_allowed = 
       !bond_constraint || (*bond_constraint)(posterior_bond);
     if (is_allowed && updated) {
@@ -495,9 +556,8 @@ public:
     if (MustCheckAtomConstraints()) {
       auto atom_pairs = AtomPairs(molecule, perturbed_molecule);
       for (auto [prior_atom, posterior_atom] : atom_pairs) {
-        Tag atom_tag = GetTag(prior_atom);
-        auto [atom_constraint, updated] = 
-          UpdatedAtomConstraint(atom_tag, prior_atom, posterior_atom);
+        auto [atom_tag, atom_constraint, updated] = 
+          UpdatedAtomConstraint(prior_atom, posterior_atom);
         if (atom_constraint && !(*atom_constraint)(posterior_atom)) {
           return false;
         };
@@ -510,9 +570,8 @@ public:
     if (MustCheckBondConstraints()) {
       auto bond_pairs = BondPairs(molecule, perturbed_molecule);
       for (auto [prior_bond, posterior_bond] : bond_pairs) {
-        Tag bond_tag = GetTag(prior_bond);
-        auto [bond_constraint, updated] = 
-          UpdatedBondConstraint(bond_tag, prior_bond, posterior_bond);
+        auto [bond_tag, bond_constraint, updated] = 
+          UpdatedBondConstraint(prior_bond, posterior_bond);
         if (bond_constraint && !(*bond_constraint)(posterior_bond)) {
           return false;
         };
@@ -524,7 +583,7 @@ public:
     };
     if (MustCheckMoleculeConstraints()) {
       for (const auto& [molecule_constraint, _] : molecule_constraints) {
-        if (!molecule_constraint(perturbed_molecule)) {
+        if (!molecule_constraint(&perturbed_molecule)) {
           return false;
         };
       };
@@ -574,26 +633,6 @@ public:
       MustCheckBondConstraints() ||
       MustCheckMoleculeConstraints();
   };
-};
-
-
-bool ValenceConstraint(const RDKit::Atom* atom) {
-  return IsValenceBelowMax(atom->getAtomicNum(), ExplicitValence(atom));
-};
-
-std::optional<MolecularConstraints::AtomConstraint> ValenceConstraintGenerator(
-  const RDKit::Atom* prior_atom, const RDKit::Atom* posterior_atom) {
-  unsigned prior_z = prior_atom ? prior_atom->getAtomicNum() : 0;
-  unsigned posterior_z = posterior_atom ? posterior_atom->getAtomicNum() : 0;
-  // If the atomic number didn't change neither did the valence constraint.
-  if (prior_z == posterior_z) {
-    return std::nullopt;
-  };
-  // Null atoms have no constraints.
-  if (!posterior_atom) {
-    return nullptr;
-  };
-  return ValenceConstraint;
 };
 
 #endif // !_MOLECULAR_CONSTRAINTS_HPP_
