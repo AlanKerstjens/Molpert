@@ -14,6 +14,9 @@ void ExecutePerturbation(
 };
 
 python::object PythonPerturbation(const MolecularPerturbation* perturbation) {
+  if (!perturbation) {
+    return python::object();
+  };
   switch (perturbation->GetType()) {
     case MolecularPerturbation::Type::AtomicNumberChange_t:
       return python::object(
