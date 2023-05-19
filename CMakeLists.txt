@@ -32,7 +32,7 @@ endif()
 
 # Search for the dependencies.
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
-find_package(Boost REQUIRED COMPONENTS serialization python)
+find_package(Boost REQUIRED COMPONENTS python)
 
 # Enable conditional compilation of Python bindings
 option(BUILD_PYTHON_BINDINGS "Enable Python binding compilation" ON)
