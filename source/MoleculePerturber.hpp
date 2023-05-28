@@ -464,11 +464,19 @@ public:
     };
   };
 
+  void SetDecorationSettings() {
+    perturbation_types = 0x000F;
+    perturbation_types_weights = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  };
+
   std::shared_ptr<AtomicNumberChange> ChangeAtomicNumber(
     const RDKit::ROMol& molecule,
     AtomIdx atom_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomicNumberChange_t]) {
+      return nullptr;
+    };
     const std::vector<std::uint8_t>* values = &atomic_numbers;
     const std::vector<double>* weights = &atomic_numbers_weights;
     if (cyclicity_based_atomic_numbers && AtomIsInRing(molecule, atom_idx)) {
@@ -495,6 +503,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomicNumberChange_t]) {
+      return nullptr;
+    };
     for (std::size_t atom_idx : ShuffledAtomIndices(molecule, prng)) {
       auto perturbation = ChangeAtomicNumber(
         molecule, atom_idx, prng, constraints);
@@ -511,6 +522,9 @@ public:
     AtomIdx atom_idx,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<std::uint8_t>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomicNumberChange_t]) {
+      return;
+    };
     const std::vector<std::uint8_t>* values = &atomic_numbers;
     if (allowed_values) {
       values = allowed_values;
@@ -538,6 +552,9 @@ public:
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<std::uint8_t>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomicNumberChange_t]) {
+      return;
+    };
     std::size_t n_atoms = molecule.getNumAtoms();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
       AtomicNumberChanges(
@@ -551,6 +568,9 @@ public:
     AtomIdx atom_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::FormalChargeChange_t]) {
+      return nullptr;
+    };
     const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     std::int8_t current_formal_charge = atom->getFormalCharge();
     for (std::int8_t formal_charge :
@@ -572,6 +592,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::FormalChargeChange_t]) {
+      return nullptr;
+    };
     for (std::size_t atom_idx : ShuffledAtomIndices(molecule, prng)) {
       auto perturbation = ChangeFormalCharge(
         molecule, atom_idx, prng, constraints);
@@ -588,6 +611,9 @@ public:
     AtomIdx atom_idx,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<std::int8_t>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::FormalChargeChange_t]) {
+      return;
+    };
     const std::vector<std::int8_t>* values = &formal_charges;
     if (allowed_values) {
       values = allowed_values;
@@ -612,6 +638,9 @@ public:
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<std::int8_t>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::FormalChargeChange_t]) {
+      return;
+    };
     std::size_t n_atoms = molecule.getNumAtoms();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
       FormalChargeChanges(
@@ -625,6 +654,9 @@ public:
     AtomIdx atom_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::ExplicitHydrogensChange_t]) {
+      return nullptr;
+    };
     const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     std::uint8_t current_explicit_hydrogens = atom->getNumExplicitHs();
     for (std::uint8_t explicit_hydrogens :
@@ -646,6 +678,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::ExplicitHydrogensChange_t]) {
+      return nullptr;
+    };
     for (std::size_t atom_idx : ShuffledAtomIndices(molecule, prng)) {
       auto perturbation = ChangeExplicitHydrogens(
         molecule, atom_idx, prng, constraints);
@@ -662,6 +697,9 @@ public:
     AtomIdx atom_idx,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<std::uint8_t>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::ExplicitHydrogensChange_t]) {
+      return;
+    };
     const std::vector<std::uint8_t>* values = &n_explicit_hydrogens;
     if (allowed_values) {
       values = allowed_values;
@@ -686,6 +724,9 @@ public:
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<std::uint8_t>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::ExplicitHydrogensChange_t]) {
+      return;
+    };
     std::size_t n_atoms = molecule.getNumAtoms();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
       ExplicitHydrogenChanges(
@@ -699,6 +740,9 @@ public:
     BondIdx bond_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondTypeChange_t]) {
+      return nullptr;
+    };
     const std::vector<RDKit::Bond::BondType>* values = &bond_types;
     const std::vector<double>* weights = &bond_types_weights;
     if (cyclicity_based_bond_types && BondIsInRing(molecule, bond_idx)) {
@@ -726,6 +770,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondTypeChange_t]) {
+      return nullptr;
+    };
     for (std::size_t bond_idx : ShuffledBondIndices(molecule, prng)) {
       auto perturbation = ChangeBondType(molecule, bond_idx, prng, constraints);
       if (perturbation) {
@@ -741,6 +788,9 @@ public:
     BondIdx bond_idx,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<RDKit::Bond::BondType>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondTypeChange_t]) {
+      return;
+    };
     const std::vector<RDKit::Bond::BondType>* values = &bond_types;
     if (allowed_values) {
       values = allowed_values;
@@ -767,6 +817,9 @@ public:
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr,
     const std::vector<RDKit::Bond::BondType>* allowed_values = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondTypeChange_t]) {
+      return;
+    };
     std::size_t n_bonds = molecule.getNumBonds();
     for (std::size_t bond_idx = 0; bond_idx < n_bonds; ++bond_idx) {
       BondTypeChanges(queue, molecule, bond_idx, constraints, allowed_values);
@@ -779,6 +832,9 @@ public:
     const std::vector<AtomIdx>& neighbor_atom_indices,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return nullptr;
+    };
     // Determine possible atomic numbers for the inserted atom.
     std::vector<std::uint8_t> candidate_atomic_numbers {default_atomic_number};
     if (atom_insertion_randomize_atomic_number) {
@@ -862,6 +918,9 @@ public:
     const boost::dynamic_bitset<>& candidate_neighbor_atoms_mask,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return nullptr;
+    };
     // Iterate over all combinations of candidate neighbors in a random order.
     RandomCombinator combinator (candidate_neighbor_atoms_mask.count(),
       allow_disconnections ? 0 : 1, atom_insertion_max_n_neighbors, prng);
@@ -882,6 +941,9 @@ public:
     AtomIdx central_atom_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return nullptr;
+    };
     boost::dynamic_bitset<> candidate_neighbor_atoms_mask =
       AtomInsertionNeighborMask(molecule, central_atom_idx);
     RandomCombinator combinator (candidate_neighbor_atoms_mask.count(),
@@ -904,6 +966,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return nullptr;
+    };
     if (!molecule.getNumAtoms()) {
       auto perturbation = InsertAtom(
         molecule, std::vector<AtomIdx>(), prng, constraints);
@@ -926,6 +991,9 @@ public:
     const RDKit::ROMol& molecule,
     const std::vector<AtomIdx>& neighbor_atom_indices,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return;
+    };
     std::shared_ptr<const std::vector<std::uint8_t>> candidate_atomic_numbers;
     if (atom_insertion_iterate_atomic_numbers) {
       candidate_atomic_numbers.reset(&atomic_numbers, boost::null_deleter());
@@ -997,6 +1065,9 @@ public:
     const RDKit::ROMol& molecule,
     const boost::dynamic_bitset<>& candidate_neighbor_atoms_mask,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return;
+    };
     assert(molecule.getNumAtoms() == candidate_neighbor_atoms_mask.size());
     Combinator combinator (candidate_neighbor_atoms_mask.count(),
       allow_disconnections || !molecule.getNumAtoms() ? 0 : 1,
@@ -1013,6 +1084,9 @@ public:
     const RDKit::ROMol& molecule,
     AtomIdx central_atom_idx,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return;
+    };
     boost::dynamic_bitset<> candidate_neighbor_atoms_mask =
       AtomInsertionNeighborMask(molecule, central_atom_idx);
     Combinator combinator (candidate_neighbor_atoms_mask.count(),
@@ -1031,6 +1105,9 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomInsertion_t]) {
+      return;
+    };
     std::size_t n_atoms = molecule.getNumAtoms();
     if (!n_atoms) {
       AtomInsertions(queue, molecule,
@@ -1049,6 +1126,9 @@ public:
     const boost::dynamic_bitset<>& candidate_reconnection_atoms_mask,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomDeletion_t]) {
+      return nullptr;
+    };
     if (CanDeleteAtomWithoutReconnection(molecule, atom_idx)) {
       auto perturbation = std::make_shared<AtomDeletion>(atom_idx);
       if (!constraints || constraints->IsAllowed(*perturbation, molecule)) {
@@ -1080,6 +1160,9 @@ public:
     AtomIdx atom_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomDeletion_t]) {
+      return nullptr;
+    };
     return DeleteAtom(molecule, atom_idx,
       AtomDeletionReconnectionMask(molecule, atom_idx), prng, constraints);
   };
@@ -1088,6 +1171,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomDeletion_t]) {
+      return nullptr;
+    };
     for (std::size_t atom_idx : ShuffledAtomIndices(molecule, prng)) {
       auto perturbation = DeleteAtom(molecule, atom_idx, prng, constraints);
       if (perturbation) {
@@ -1103,6 +1189,9 @@ public:
     AtomIdx atom_idx,
     const boost::dynamic_bitset<>& candidate_reconnection_atoms_mask,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomDeletion_t]) {
+      return;
+    };
     if (CanDeleteAtomWithoutReconnection(molecule, atom_idx)) {
       auto perturbation = std::make_shared<AtomDeletion>(atom_idx);
       if (!constraints || constraints->IsAllowed(*perturbation, molecule)) {
@@ -1131,6 +1220,9 @@ public:
     const RDKit::ROMol& molecule,
     AtomIdx atom_idx,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomDeletion_t]) {
+      return;
+    };
     AtomDeletions(queue, molecule, atom_idx,
       AtomDeletionReconnectionMask(molecule, atom_idx), constraints);
   };
@@ -1139,6 +1231,9 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::AtomDeletion_t]) {
+      return;
+    };
     std::size_t n_atoms = molecule.getNumAtoms();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
       AtomDeletions(queue, molecule, atom_idx, constraints);
@@ -1152,6 +1247,9 @@ public:
     const boost::dynamic_bitset<>& candidate_end_atom_mask,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondInsertion_t]) {
+      return nullptr;
+    };
     std::vector<std::size_t> end_atom_indices =
       ExtractBits(candidate_end_atom_mask);
     std::shuffle(end_atom_indices.begin(), end_atom_indices.end(), prng);
@@ -1178,6 +1276,9 @@ public:
     AtomIdx begin_atom_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondInsertion_t]) {
+      return nullptr;
+    };
     return InsertBond(molecule, begin_atom_idx,
       BondingPartnerMask(molecule, begin_atom_idx), prng, constraints);
   };
@@ -1186,6 +1287,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondInsertion_t]) {
+      return nullptr;
+    };
     boost::dynamic_bitset<> candidate_atom_mask (molecule.getNumAtoms());
     candidate_atom_mask.set();
     if (bond_insertion_max_atom_n_rings_membership < max_unsigned) {
@@ -1211,6 +1315,9 @@ public:
     AtomIdx begin_atom_idx,
     const boost::dynamic_bitset<>& candidate_end_atom_mask,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondInsertion_t]) {
+      return;
+    };
     std::shared_ptr<const std::vector<RDKit::Bond::BondType>> candidate_bond_types;
     if (bond_insertion_iterate_bond_types) {
       candidate_bond_types.reset(&bond_types, boost::null_deleter());
@@ -1237,6 +1344,9 @@ public:
     const RDKit::ROMol& molecule,
     AtomIdx begin_atom_idx,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondInsertion_t]) {
+      return;
+    };
     BondInsertions(queue, molecule, begin_atom_idx,
       BondingPartnerMask(molecule, begin_atom_idx), constraints);
   };
@@ -1245,6 +1355,9 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondInsertion_t]) {
+      return;
+    };
     std::size_t n_atoms = molecule.getNumAtoms();
     boost::dynamic_bitset<> candidate_atom_mask (n_atoms);
     candidate_atom_mask.set();
@@ -1265,6 +1378,9 @@ public:
     BondIdx bond_idx,
     const std::vector<std::pair<std::size_t, std::size_t>>& candidate_reroutes,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondDeletion_t]) {
+      return nullptr;
+    };
     const RDKit::Bond* bond = molecule.getBondWithIdx(bond_idx);
     AtomIdx begin_atom_idx = bond->getBeginAtomIdx();
     AtomIdx end_atom_idx = bond->getEndAtomIdx();
@@ -1296,6 +1412,9 @@ public:
     BondIdx bond_idx,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondDeletion_t]) {
+      return nullptr;
+    };
     auto bond_reroutes = BondReroutes(molecule, bond_idx,
       bond_deletion_min_distance_reroute,
       bond_deletion_max_distance_reroute);
@@ -1307,6 +1426,9 @@ public:
     const RDKit::ROMol& molecule,
     std::mt19937& prng,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondDeletion_t]) {
+      return nullptr;
+    };
     for (std::size_t bond_idx : ShuffledBondIndices(molecule, prng)) {
       auto perturbation = DeleteBond(molecule, bond_idx, prng, constraints);
       if (perturbation) {
@@ -1322,6 +1444,9 @@ public:
     BondIdx bond_idx,
     const std::vector<std::pair<std::size_t, std::size_t>>& candidate_reroutes,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondDeletion_t]) {
+      return;
+    };
     const RDKit::Bond* bond = molecule.getBondWithIdx(bond_idx);
     AtomIdx begin_atom_idx = bond->getBeginAtomIdx();
     AtomIdx end_atom_idx = bond->getEndAtomIdx();
@@ -1352,6 +1477,9 @@ public:
     const RDKit::ROMol& molecule,
     BondIdx bond_idx,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondDeletion_t]) {
+      return;
+    };
     BondDeletions(queue, molecule, bond_idx,
       BondReroutes(molecule, bond_idx,
         bond_deletion_min_distance_reroute,
@@ -1362,6 +1490,9 @@ public:
     MolecularPerturbationQueue& queue,
     const RDKit::ROMol& molecule,
     const MolecularConstraints* constraints = nullptr) const {
+    if (!perturbation_types[MolecularPerturbation::BondDeletion_t]) {
+      return;
+    };
     std::size_t n_bonds = molecule.getNumBonds();
     for (std::size_t bond_idx = 0; bond_idx < n_bonds; ++bond_idx) {
       BondDeletions(queue, molecule, bond_idx, constraints);
@@ -1380,7 +1511,6 @@ public:
     };
     std::shared_ptr<MolecularPerturbation> perturbation;
     for (MolecularPerturbation::Type type : eligible_perturbation_types) {
-      // std::cout << "Creating perturbation: " << type << std::endl;
       switch (type) {
         case MolecularPerturbation::AtomicNumberChange_t:
           perturbation = ChangeAtomicNumber(molecule, prng, constraints);
