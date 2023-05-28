@@ -12,8 +12,6 @@
 namespace python = boost::python;
 
 BOOST_PYTHON_MODULE(molpert) {
-  python::scope module_scope = python::scope();
-
   python::def("TagMolecule", TagMolecule, (
     python::arg("molecule"),
     python::arg("skip_if_tagged") = false,

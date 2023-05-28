@@ -3,6 +3,7 @@
 #define _PY_MOLECULAR_PERTURBATIONS_HPP_
 
 #include "MolecularPerturbations.hpp"
+#include "pySTL.hpp"
 #include <boost/python.hpp>
 
 namespace python = boost::python;
@@ -55,12 +56,6 @@ python::object PythonPerturbation(const MolecularPerturbation* perturbation) {
     default:
       return python::object();
   };
-};
-
-template<class T>
-std::vector<T> to_vector(const python::object& iterable) {
-  return std::vector<T>(
-    python::stl_input_iterator<T>(iterable), python::stl_input_iterator<T>());
 };
 
 std::shared_ptr<AtomInsertion> AtomInsertionFactory(
