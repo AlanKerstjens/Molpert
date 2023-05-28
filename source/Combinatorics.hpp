@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _COMBINATORICS_HPP_
 #define _COMBINATORICS_HPP_
 

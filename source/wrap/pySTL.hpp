@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _PY_STL_HPP_
 #define _PY_STL_HPP_
 

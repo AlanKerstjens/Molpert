@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _PY_ADDONS_HPP_
 #define _PY_ADDONS_HPP_
 

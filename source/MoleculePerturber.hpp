@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOLECULE_PERTURBER_HPP_
 #define _MOLECULE_PERTURBER_HPP_
 

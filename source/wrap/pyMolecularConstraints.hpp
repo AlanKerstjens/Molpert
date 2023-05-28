@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _PY_MOLECULAR_CONSTRAINTS_HPP_
 #define _PY_MOLECULAR_CONSTRAINTS_HPP_
 

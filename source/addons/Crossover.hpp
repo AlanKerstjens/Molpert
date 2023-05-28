@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _CROSSOVER_HPP_
 #define _CROSSOVER_HPP_
 

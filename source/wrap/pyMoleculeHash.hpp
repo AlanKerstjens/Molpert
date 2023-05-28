@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _PY_MOLECULE_HASH_HPP_
 #define _PY_MOLECULE_HASH_HPP_
 

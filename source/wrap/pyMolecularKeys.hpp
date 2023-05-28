@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _PY_MOLECULAR_KEYS_HPP_
 #define _PY_MOLECULAR_KEYS_HPP_
 

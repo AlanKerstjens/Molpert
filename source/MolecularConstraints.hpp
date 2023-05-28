@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOLECULAR_CONSTRAINTS_HPP_
 #define _MOLECULAR_CONSTRAINTS_HPP_
 

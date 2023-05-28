@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOLECULAR_PERTURBATIONS_HPP_
 #define _MOLECULAR_PERTURBATIONS_HPP_
 

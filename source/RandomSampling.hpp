@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _RANDOM_SAMPLING_HPP_
 #define _RANDOM_SAMPLING_HPP_
 

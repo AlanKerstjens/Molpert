@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOLECULAR_KEYS_HPP_
 #define _MOLECULAR_KEYS_HPP_
 

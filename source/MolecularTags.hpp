@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOLECULAR_TAGS_HPP_
 #define _MOLECULAR_TAGS_HPP_
 

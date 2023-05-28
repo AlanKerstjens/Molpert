@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _SUBGRAPH_HPP_
 #define _SUBGRAPH_HPP_
 

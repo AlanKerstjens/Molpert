@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MIMICRY_HPP_
 #define _MIMICRY_HPP_
 

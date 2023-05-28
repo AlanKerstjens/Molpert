@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _VALENCE_HPP_
 #define _VALENCE_HPP_
 

@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOLECULAR_GRAPH_SEARCH_HPP_
 #define _MOLECULAR_GRAPH_SEARCH_HPP_
 

@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _PY_VALENCE_HPP_
 #define _PY_VALENCE_HPP_
 

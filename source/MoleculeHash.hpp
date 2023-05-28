@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOLECULE_HASH_HPP_
 #define _MOLECULE_HASH_HPP_
 

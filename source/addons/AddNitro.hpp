@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _ADD_NITRO_HPP_
 #define _ADD_NITRO_HPP_
 
