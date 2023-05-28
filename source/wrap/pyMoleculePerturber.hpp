@@ -3,6 +3,7 @@
 
 #include "MoleculePerturber.hpp"
 #include "pyMolecularPerturbations.hpp"
+#include "pySTL.hpp"
 #include <boost/python.hpp>
 
 namespace python = boost::python;
@@ -228,6 +229,132 @@ void Perturbations(
   const MolecularConstraints* constraints = nullptr) {
   perturber(queue, molecule, constraints);
 };
+
+
+template <class T>
+python::tuple GetValuesAndWeights(
+  const std::vector<T>& values,
+  const std::vector<double>& weights) {
+  return python::make_tuple(to_list(values), to_list(weights));
+};
+
+python::tuple GetAtomicNumbers(
+  const MoleculePerturber& perturber) {
+  return GetValuesAndWeights(
+    perturber.atomic_numbers, perturber.atomic_numbers_weights);
+};
+
+python::tuple GetRingAtomicNumbers(
+  const MoleculePerturber& perturber) {
+  return GetValuesAndWeights(
+    perturber.ring_atomic_numbers, perturber.ring_atomic_numbers_weights);
+};
+
+python::tuple GetFormalCharges(
+  const MoleculePerturber& perturber) {
+  return GetValuesAndWeights(
+    perturber.formal_charges, perturber.formal_charges_weights);
+};
+
+python::tuple GetNExplicitHydrogens(
+  const MoleculePerturber& perturber) {
+  return GetValuesAndWeights(
+    perturber.n_explicit_hydrogens, perturber.n_explicit_hydrogens_weights);
+};
+
+python::tuple GetBondTypes(
+  const MoleculePerturber& perturber) {
+  return GetValuesAndWeights(
+    perturber.bond_types, perturber.bond_types_weights);
+};
+
+python::tuple GetRingBondTypes(
+  const MoleculePerturber& perturber) {
+  return GetValuesAndWeights(
+    perturber.ring_bond_types, perturber.ring_bond_types_weights);
+};
+
+python::tuple GetPerturbationTypes(
+  const MoleculePerturber& perturber) {
+  python::list types;
+  python::list weights;
+  for (std::size_t t = 0; t < MolecularPerturbation::n_types; ++t) {
+    if (perturber.perturbation_types[t]) {
+      types.append(MolecularPerturbation::Type(t));
+      weights.append(perturber.perturbation_types_weights[t]);
+    };
+  };
+  return python::make_tuple(types, weights);
+};
+
+
+template <class T>
+void SetValuesAndWeights(
+  std::vector<T>& values,
+  std::vector<double>& weights,
+  const python::list& new_values,
+  const python::list& new_weights) {
+  if (python::len(new_values) != python::len(new_weights)) {
+    throw std::length_error("Size mismatch between values and weights");
+  };
+  values = to_vector<T>(new_values);
+  weights = to_vector<double>(new_weights);
+};
+
+void SetAtomicNumbers(
+  MoleculePerturber& perturber,
+  const python::list& atomic_numbers,
+  const python::list& weights) {
+  SetValuesAndWeights(
+    perturber.atomic_numbers, perturber.atomic_numbers_weights, 
+    atomic_numbers, weights);
+};
+
+void SetRingAtomicNumbers(
+  MoleculePerturber& perturber,
+  const python::list& atomic_numbers,
+  const python::list& weights) {
+  SetValuesAndWeights(
+    perturber.ring_atomic_numbers, perturber.ring_atomic_numbers_weights, 
+    atomic_numbers, weights);
+};
+
+void SetFormalCharges(
+  MoleculePerturber& perturber,
+  const python::list& formal_charges,
+  const python::list& weights) {
+  SetValuesAndWeights(
+    perturber.formal_charges, perturber.formal_charges_weights, 
+    formal_charges, weights);
+};
+
+void SetNExplicitHydrogens(
+  MoleculePerturber& perturber,
+  const python::list& n_explicit_hydrogens,
+  const python::list& weights) {
+  SetValuesAndWeights(
+    perturber.n_explicit_hydrogens, perturber.n_explicit_hydrogens_weights, 
+    n_explicit_hydrogens, weights);
+};
+
+void SetBondTypes(
+  MoleculePerturber& perturber,
+  const python::list& bond_types,
+  const python::list& weights) {
+  SetValuesAndWeights(
+    perturber.bond_types, perturber.bond_types_weights, 
+    bond_types, weights);
+};
+
+void SetRingBondTypes(
+  MoleculePerturber& perturber,
+  const python::list& bond_types,
+  const python::list& weights) {
+  SetValuesAndWeights(
+    perturber.ring_bond_types, perturber.ring_bond_types_weights, 
+    bond_types, weights);
+};
+
 
 void WrapMoleculePerturber() {
 
@@ -469,6 +596,39 @@ void WrapMoleculePerturber() {
       python::arg("queue"),
       python::arg("molecule"),
       python::arg("constraints") = null_constraints))
+
+    .def("EnablePerturbationType", &MoleculePerturber::EnablePerturbationType, (
+      python::arg("perturbation_type"),
+      python::arg("weight") = 1.0))
+    .def("DisablePerturbationType", &MoleculePerturber::DisablePerturbationType, (
+      python::arg("perturbation_type")))
+
+    .def("GetPerturbationTypes", GetPerturbationTypes)
+    .def("GetAtomicNumbers", GetAtomicNumbers)
+    .def("GetRingAtomicNumbers", GetRingAtomicNumbers)
+    .def("GetFormalCharges", GetFormalCharges)
+    .def("GetNExplicitHydrogens", GetNExplicitHydrogens)
+    .def("GetBondTypes", GetBondTypes)
+    .def("GetRingBondTypes", GetRingBondTypes)
+
+    .def("SetAtomicNumbers", SetAtomicNumbers, (
+      python::arg("atomic_numbers"),
+      python::arg("weights")))
+    .def("SetRingAtomicNumbers", SetRingAtomicNumbers, (
+      python::arg("atomic_numbers"),
+      python::arg("weights")))
+    .def("SetFormalCharges", SetFormalCharges, (
+      python::arg("formal_charges"),
+      python::arg("weights")))
+    .def("SetNExplicitHydrogens", SetNExplicitHydrogens, (
+      python::arg("n_explicit_hydrogens"),
+      python::arg("weights")))
+    .def("SetBondTypes", SetBondTypes, (
+      python::arg("bond_types"),
+      python::arg("weights")))
+    .def("SetRingBondTypes", SetRingBondTypes, (
+      python::arg("bond_types"),
+      python::arg("weights")))
 
     .def_readwrite("default_atomic_number", &MoleculePerturber::default_atomic_number)
     .def_readwrite("default_formal_charge", &MoleculePerturber::default_formal_charge)

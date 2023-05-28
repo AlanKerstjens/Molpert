@@ -47,7 +47,7 @@ public:
 
 class MoleculePerturber {
 public:
-  MolecularPerturbation::TypeMask perturbation_types = 0xFFFF;
+  MolecularPerturbation::TypeMask perturbation_types = 0x1E0F;
   std::array<double, MolecularPerturbation::n_types> perturbation_types_weights
     {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0};
 
@@ -467,6 +467,18 @@ public:
   void SetDecorationSettings() {
     perturbation_types = 0x000F;
     perturbation_types_weights = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  };
+
+  void EnablePerturbationType(
+    MolecularPerturbation::Type type,
+    double weight = 1.0) {
+    perturbation_types.set(type);
+    perturbation_types_weights[type] = 1.0;
+  };
+
+  void DisablePerturbationType(MolecularPerturbation::Type type) {
+    perturbation_types.reset(type);
+    perturbation_types_weights[type] = 0.0;
   };
 
   std::shared_ptr<AtomicNumberChange> ChangeAtomicNumber(
