@@ -3,8 +3,7 @@ cmake_minimum_required(VERSION 3.18)
 # Define the project.
 project(Molpert
   LANGUAGES CXX
-  DESCRIPTION "Library for graph-based manipulation of RDKit molecules"
-)
+  DESCRIPTION "Library for graph-based manipulation of RDKit molecules")
 
 # Specify the C++ standard.
 set(CMAKE_CXX_STANDARD 20)
@@ -30,15 +29,8 @@ else()
   set(RDKit_FOUND True)
 endif()
 
-# Search for the dependencies.
-find_package(Python REQUIRED COMPONENTS Interpreter Development)
-find_package(Boost REQUIRED COMPONENTS python)
-
-# Enable conditional compilation of Python bindings
-option(BUILD_PYTHON_BINDINGS "Enable Python binding compilation" ON)
-if(BUILD_PYTHON_BINDINGS)
-  add_definitions(-DBUILD_PYTHON_BINDINGS)
-endif()
+# Search for Boost
+find_package(Boost REQUIRED)
 
 # Define the library targets.
 add_library(Molpert INTERFACE)
@@ -47,49 +39,50 @@ target_include_directories(Molpert INTERFACE
   ${MOLPERT_SOURCE_DIR}
   ${MOLPERT_SOURCE_DIR}/addons
   ${Boost_INCLUDE_DIRS}
-  ${RDKit_INCLUDE_DIRS}
-)
+  ${RDKit_INCLUDE_DIRS})
 
 target_link_directories(Molpert INTERFACE
   ${Boost_LIBRARY_DIRS}
-  ${RDKit_LIBRARY_DIRS}
-)
+  ${RDKit_LIBRARY_DIRS})
 
 target_link_libraries(Molpert INTERFACE
-  ${Boost_LIBRARIES}
   RDKitRDGeneral
   RDKitGraphMol
   RDKitFingerprints
-  RDKitSmilesParse
-)
+  RDKitSmilesParse)
 
-add_library(pyMolpert MODULE
-  ${MOLPERT_SOURCE_DIR}/wrap/pyMolpert.cpp
-)
+# Enable conditional compilation of Python bindings
+option(BUILD_PYTHON_BINDINGS "Enable Python binding compilation" ON)
+if(BUILD_PYTHON_BINDINGS)
 
-target_include_directories(pyMolpert PUBLIC
-  ${MOLPERT_SOURCE_DIR}/wrap
-  ${Python_INCLUDE_DIRS}
-)
+  add_definitions(-DBUILD_PYTHON_BINDINGS)
 
-target_link_directories(pyMolpert PUBLIC
-  ${Python_LIBRARY_DIRS}
-)
+  find_package(Python REQUIRED COMPONENTS Interpreter Development)
+  find_package(Boost REQUIRED COMPONENTS python)
 
-target_link_libraries(pyMolpert PUBLIC
-  ${Python_LIBRARIES}
-  Molpert
-)
+  add_library(pyMolpert MODULE
+    ${MOLPERT_SOURCE_DIR}/wrap/pyMolpert.cpp)
 
-set_target_properties(pyMolpert PROPERTIES
-  PREFIX ""
-  IMPORT_PREFIX ""
-  OUTPUT_NAME "molpert"
-)
+  target_include_directories(pyMolpert PUBLIC
+    ${MOLPERT_SOURCE_DIR}/wrap
+    ${Python_INCLUDE_DIRS})
 
-# Specify where the libraries should be installed.
-install(
-  TARGETS
-    pyMolpert
-  DESTINATION ${MOLPERT_LIB_DIR}
-)
+  target_link_directories(pyMolpert PUBLIC
+    ${Python_LIBRARY_DIRS})
+
+  target_link_libraries(pyMolpert PUBLIC
+    ${Python_LIBRARIES}
+    Boost::python
+    Molpert)
+
+  set_target_properties(pyMolpert PROPERTIES
+    PREFIX ""
+    IMPORT_PREFIX ""
+    OUTPUT_NAME "molpert")
+
+  install(
+    TARGETS
+      pyMolpert
+    DESTINATION ${MOLPERT_LIB_DIR})
+
+endif()
