@@ -133,6 +133,9 @@ void Kekulize(
     if (!bond) {
       return;
     };
+    if (availability <= 0) {
+      bond_type = RDKit::Bond::SINGLE;
+    };
     bond->setBondType(bond_type);
     bond->setIsAromatic(false);
     switch (bond_type) {
