@@ -13,7 +13,6 @@ struct CircularAtomicEnvironment {
   const RDKit::ROMol* molecule;
   const RDKit::Atom* root_atom;
   const std::uint8_t radius;
-  const std::size_t n_atoms; // In molecule, not in environment.
   boost::dynamic_bitset<> atom_mask;
   boost::dynamic_bitset<> bond_mask;
   std::vector<std::uint8_t> atom_distances;
@@ -22,9 +21,8 @@ public:
   CircularAtomicEnvironment(const RDKit::Atom* root_atom, std::uint8_t radius) :
     molecule(&root_atom->getOwningMol()), root_atom(root_atom),
     radius(radius),
-    n_atoms(molecule->getNumAtoms()),
-    atom_mask(n_atoms), bond_mask(molecule->getNumBonds()),
-    atom_distances(n_atoms, 0xFF) {
+    atom_mask(molecule->getNumAtoms()), bond_mask(molecule->getNumBonds()),
+    atom_distances(molecule->getNumAtoms(), 0xFF) {
     MolecularGraphDiscoveryJournal journal = MoleculeBFS(
       *molecule,
       root_atom->getIdx(),
@@ -61,6 +59,7 @@ public:
     assert(distance <= radius);
     std::vector<std::size_t> atom_indices;
     atom_indices.reserve(atom_mask.count());
+    std::size_t n_atoms = atom_mask.size();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
       if (atom_distances[atom_idx] == distance) {
         atom_indices.push_back(atom_idx);
@@ -72,6 +71,7 @@ public:
   std::string SMILES() const {
     RDKit::RWMol environment;
     std::unordered_map<std::size_t, std::size_t> atom_map;
+    std::size_t n_atoms = atom_mask.size();
     for (std::size_t atom_idx = 0; atom_idx < n_atoms; ++atom_idx) {
       if (atom_mask[atom_idx]) {
         // atom shouldn't be const as this would cause an incorrect 
@@ -141,8 +141,8 @@ CircularEnvironmentOverlap(
     environments.at(0);
   const RDKit::ROMol* molecule = representative_environment.molecule;
   unsigned radius = representative_environment.radius;
-  std::size_t n_atoms = molecule->getNumAtoms();
-  std::size_t n_bonds = molecule->getNumBonds();
+  std::size_t n_atoms = representative_environment.atom_mask.size();
+  std::size_t n_bonds = representative_environment.bond_mask.size();
   std::vector<unsigned> atom_overlap (n_atoms, 0);
   std::vector<unsigned> bond_overlap (n_bonds, 0);
   for (const CircularAtomicEnvironment& environment : environments) {
