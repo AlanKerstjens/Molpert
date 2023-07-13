@@ -3,6 +3,7 @@
 
 #include "MolecularTags.hpp"
 #include <GraphMol/RWMol.h>
+#include <bitset>
 
 // typedefs so we can use less bits if we really need to
 typedef std::size_t AtomIdx;
