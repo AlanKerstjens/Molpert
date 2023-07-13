@@ -31,6 +31,11 @@ public:
     std::shuffle(queue.begin(), queue.end(), prng);
   };
 
+  void clear() {
+    queue.clear();
+    queued_perturbation_ids.clear();
+  };
+
   std::shared_ptr<MolecularPerturbation> front() const {
     return queue.front();
   };

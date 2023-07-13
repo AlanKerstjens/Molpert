@@ -370,6 +370,7 @@ void WrapMoleculePerturber() {
       python::arg("perturbation")))
     .def("pop", &MolecularPerturbationQueue::pop)
     .def("shuffle", &MolecularPerturbationQueue::shuffle)
+    .def("clear", &MolecularPerturbationQueue::clear)
     .def("front", QueueFront)
     .def("empty", &MolecularPerturbationQueue::empty)
     .def("__len__", &MolecularPerturbationQueue::size);
