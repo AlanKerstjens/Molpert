@@ -355,6 +355,30 @@ void SetRingBondTypes(
     bond_types, weights);
 };
 
+void SetPerturbationTypes(
+  MoleculePerturber& perturber,
+  const python::list& perturbation_types,
+  const python::list& weights,
+  bool reset = true) {
+  if (reset) {
+    perturber.perturbation_types.reset();
+    std::fill(
+      perturber.perturbation_types_weights.begin(),
+      perturber.perturbation_types_weights.end(), 0.0);
+  };
+  std::size_t n = python::len(perturbation_types);
+  if (python::len(weights) != n) {
+    throw std::length_error("Size mismatch between values and weights");
+  };
+  for (std::size_t i = 0; i < n; ++i) {
+    MolecularPerturbation::Type type = 
+      python::extract<MolecularPerturbation::Type>(perturbation_types[i]);
+    double weight = python::extract<double>(weights[i]);
+    perturber.perturbation_types.set(type);
+    perturber.perturbation_types_weights[type] = weight;
+  };
+};
+
 
 void WrapMoleculePerturber() {
 
@@ -612,6 +636,10 @@ void WrapMoleculePerturber() {
     .def("GetBondTypes", GetBondTypes)
     .def("GetRingBondTypes", GetRingBondTypes)
 
+    .def("SetPerturbationTypes", SetPerturbationTypes, (
+      python::arg("perturbation_types"),
+      python::arg("weights"),
+      python::arg("reset") = true))
     .def("SetAtomicNumbers", SetAtomicNumbers, (
       python::arg("atomic_numbers"),
       python::arg("weights")))
