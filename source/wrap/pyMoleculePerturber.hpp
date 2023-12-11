@@ -533,6 +533,9 @@ void WrapMoleculePerturber() {
       python::arg("acyclic_can_be_aromatic") = false,
       python::arg("use_chembl_distribution") = true))
     .def("SetDecorationSettings", &MoleculePerturber::SetDecorationSettings)
+    .def("SetConservativeSettings", &MoleculePerturber::SetConservativeSettings)
+    .def("SetBalancedSettings", &MoleculePerturber::SetBalancedSettings)
+    .def("SetAdventurousSettings", &MoleculePerturber::SetAdventurousSettings)
 
     .def<python::object (const MoleculePerturber&, const RDKit::ROMol&, AtomIdx, std::mt19937&, const MolecularConstraints*)>(
       "ChangeAtomicNumber", ChangeAtomicNumber, (

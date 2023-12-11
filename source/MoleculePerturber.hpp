@@ -474,6 +474,105 @@ public:
     perturbation_types_weights = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   };
 
+  void SetConservativeSettings() {
+    perturbation_types = 0x1E09;
+    allow_disconnections = false;
+    atom_insertion_max_n_neighbors = 2;
+    atom_insertion_drop_an_atom = true;
+    atom_insertion_dropping_is_optional = false;
+    atom_insertion_only_pericentral_atoms_as_neighbor_candidates = true;
+    atom_insertion_min_distance_neighbor = 3;
+    atom_insertion_max_distance_neighbor = 4;
+    atom_insertion_randomize_atomic_number = false;
+    atom_insertion_randomize_formal_charge = false;
+    atom_insertion_randomize_n_explicit_hydrogens = false;
+    atom_insertion_randomize_bond_types = false;
+    atom_insertion_iterate_atomic_numbers = false;
+    atom_insertion_iterate_formal_charges = false;
+    atom_insertion_iterate_n_explicit_hydrogens = false;
+    atom_insertion_iterate_bond_types = false;
+    atom_deletion_allow_reconnections = true;
+    atom_deletion_only_consider_neighbors_for_reconnection = true;
+    atom_deletion_preserve_bond_types_during_reconnection = false;
+    atom_deletion_min_distance_reconnection_atom = 1;
+    atom_deletion_max_distance_reconnection_atom = 1;
+    bond_insertion_min_distance_partner = 2;
+    bond_insertion_max_distance_partner = 5;
+    bond_insertion_max_atom_n_rings_membership = 2;
+    bond_insertion_randomize_bond_type = false;
+    bond_insertion_iterate_bond_types = false;
+    bond_deletion_allow_reroutes = true;
+    bond_deletion_preserve_bond_types_during_reroute = false;
+    bond_deletion_min_distance_reroute = 2;
+    bond_deletion_max_distance_reroute = 2;
+  };
+
+  void SetBalancedSettings() {
+    perturbation_types = 0x1E0F;
+    allow_disconnections = false;
+    atom_insertion_max_n_neighbors = 3;
+    atom_insertion_drop_an_atom = true;
+    atom_insertion_dropping_is_optional = false;
+    atom_insertion_only_pericentral_atoms_as_neighbor_candidates = true;
+    atom_insertion_min_distance_neighbor = 1;
+    atom_insertion_max_distance_neighbor = max_unsigned;
+    atom_insertion_randomize_atomic_number = true;
+    atom_insertion_randomize_formal_charge = false;
+    atom_insertion_randomize_n_explicit_hydrogens = false;
+    atom_insertion_randomize_bond_types = true;
+    atom_insertion_iterate_atomic_numbers = false;
+    atom_insertion_iterate_formal_charges = false;
+    atom_insertion_iterate_n_explicit_hydrogens = false;
+    atom_insertion_iterate_bond_types = false;
+    atom_deletion_allow_reconnections = true;
+    atom_deletion_only_consider_neighbors_for_reconnection = true;
+    atom_deletion_preserve_bond_types_during_reconnection = true;
+    atom_deletion_min_distance_reconnection_atom = 1;
+    atom_deletion_max_distance_reconnection_atom = max_unsigned;
+    bond_insertion_min_distance_partner = 2;
+    bond_insertion_max_distance_partner = max_unsigned;
+    bond_insertion_max_atom_n_rings_membership = max_unsigned;
+    bond_insertion_randomize_bond_type = true;
+    bond_insertion_iterate_bond_types = false;
+    bond_deletion_allow_reroutes = true;
+    bond_deletion_preserve_bond_types_during_reroute = true;
+    bond_deletion_min_distance_reroute = 2;
+    bond_deletion_max_distance_reroute = 2;
+  };
+
+  void SetAdventurousSettings() {
+    perturbation_types = 0x1E0F;
+    allow_disconnections = false;
+    atom_insertion_max_n_neighbors = 4;
+    atom_insertion_drop_an_atom = true;
+    atom_insertion_dropping_is_optional = true;
+    atom_insertion_only_pericentral_atoms_as_neighbor_candidates = false;
+    atom_insertion_min_distance_neighbor = 1;
+    atom_insertion_max_distance_neighbor = max_unsigned;
+    atom_insertion_randomize_atomic_number = true;
+    atom_insertion_randomize_formal_charge = false;
+    atom_insertion_randomize_n_explicit_hydrogens = false;
+    atom_insertion_randomize_bond_types = true;
+    atom_insertion_iterate_atomic_numbers = true;
+    atom_insertion_iterate_formal_charges = false;
+    atom_insertion_iterate_n_explicit_hydrogens = false;
+    atom_insertion_iterate_bond_types = true;
+    atom_deletion_allow_reconnections = true;
+    atom_deletion_only_consider_neighbors_for_reconnection = false;
+    atom_deletion_preserve_bond_types_during_reconnection = true;
+    atom_deletion_min_distance_reconnection_atom = 1;
+    atom_deletion_max_distance_reconnection_atom = max_unsigned;
+    bond_insertion_min_distance_partner = 2;
+    bond_insertion_max_distance_partner = max_unsigned;
+    bond_insertion_max_atom_n_rings_membership = max_unsigned;
+    bond_insertion_randomize_bond_type = true;
+    bond_insertion_iterate_bond_types = true;
+    bond_deletion_allow_reroutes = true;
+    bond_deletion_preserve_bond_types_during_reroute = true;
+    bond_deletion_min_distance_reroute = 2;
+    bond_deletion_max_distance_reroute = max_unsigned;
+  };
+
   void EnablePerturbationType(
     MolecularPerturbation::Type type,
     double weight = 1.0) {
