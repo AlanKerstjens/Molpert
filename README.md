@@ -2,6 +2,8 @@
 
 Molpert is a library for graph-based perturbation of RDKit molecules. It supports atom and bond property modifications, insertions and deletions and combinations thereof. A plethora of settings provide fine grained control over how perturbations are executed. The library can be used stochastically, applying a random eligible perturbation, or deterministically, enumerating all eligible perturbations. Perturbation eligibility is determined by arbitrary user-provided constraints.
 
+For a more detailed description please see the corresponding publication: [Kerstjens, A., De Winter, H. A molecule perturbation software library and its application to study the effects of molecular design constraints. J Cheminform 15, 89 (2023)](https://doi.org/10.1186/s13321-023-00761-5)
+
 # Installation
 
 ## Installation from source
