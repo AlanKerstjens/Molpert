@@ -9,7 +9,7 @@ namespace python = boost::python;
 EnvironmentKey CircularAtomicEnvironmentKeyWrapper(
   const CircularAtomicEnvironment& environment,
   const python::object& atom_hashes) {
-  std::vector<std::uint64_t> ahs = to_vector<std::uint64_t>(atom_hashes);
+  std::vector<std::size_t> ahs = to_vector<std::size_t>(atom_hashes);
   if (ahs.size() != environment.molecule->getNumAtoms()) {
     PyErr_SetString(PyExc_TypeError, 
       "Size mismatch between atom hashes and number of atoms");

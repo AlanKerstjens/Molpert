@@ -6,7 +6,7 @@
 #include "MoleculeHash.hpp"
 #include "MolecularGraphSearch.hpp"
 
-typedef std::uint64_t EnvironmentKey;
+typedef std::size_t EnvironmentKey;
 static const EnvironmentKey NULL_ENVIRONMENT_KEY (0);
 
 struct CircularAtomicEnvironment {
@@ -38,7 +38,7 @@ public:
     };
   };
 
-  std::uint64_t Hash(const std::vector<std::uint64_t>& atom_hashes) const {
+  std::size_t Hash(const std::vector<std::size_t>& atom_hashes) const {
     return MorganHash<RDKit::MolGraph, RDKit::Bond*>(
       atom_hashes,
       atom_mask,
@@ -47,7 +47,7 @@ public:
       BondTypeAsHash);
   };
 
-  EnvironmentKey Key(const std::vector<std::uint64_t>& atom_hashes) const {
+  EnvironmentKey Key(const std::vector<std::size_t>& atom_hashes) const {
     return Hash(atom_hashes);
   };
 
@@ -102,7 +102,7 @@ class CircularAtomicEnvironmentGenerator {
   std::uint8_t environment_radius;
   AtomsHasher atoms_hasher;
   const RDKit::ROMol* hashed_molecule = nullptr; // Cache
-  std::vector<std::uint64_t> atom_hashes; // Cache
+  std::vector<std::size_t> atom_hashes; // Cache
 
 public:
   CircularAtomicEnvironmentGenerator(

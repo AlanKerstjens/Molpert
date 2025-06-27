@@ -9,10 +9,10 @@
 #include "MolecularKeys.hpp"
 
 typedef std::function<
-  std::vector<std::uint64_t>(const RDKit::ROMol&)> AtomsHasher;
+  std::vector<std::size_t>(const RDKit::ROMol&)> AtomsHasher;
 
-std::uint64_t LoneAtomHash(const RDKit::Atom* atom) {
-  std::uint64_t hash = atom->getAtomicNum();
+std::size_t LoneAtomHash(const RDKit::Atom* atom) {
+  std::size_t hash = atom->getAtomicNum();
   boost::hash_combine(hash, atom->getFormalCharge());
   // I used to include the total (implicit + explicit ) as opposed to the
   // explicit number of hydrogens, but in the RDKit the number of implicit
@@ -25,31 +25,31 @@ std::uint64_t LoneAtomHash(const RDKit::Atom* atom) {
   return hash;
 };
 
-std::vector<std::uint64_t> LoneAtomHashes(const RDKit::ROMol& molecule) {
+std::vector<std::size_t> LoneAtomHashes(const RDKit::ROMol& molecule) {
   std::size_t n = molecule.getNumAtoms();
-  std::vector<std::uint64_t> atom_hashes (n);
+  std::vector<std::size_t> atom_hashes (n);
   for (std::size_t atom_idx = 0; atom_idx < n; ++atom_idx) {
     atom_hashes[atom_idx] = LoneAtomHash(molecule.getAtomWithIdx(atom_idx));
   };
   return atom_hashes;
 };
 
-std::uint64_t RingAwareAtomHash(
+std::size_t RingAwareAtomHash(
   const RDKit::Atom* atom,
   bool is_in_ring) {
-  std::uint64_t hash = LoneAtomHash(atom);
+  std::size_t hash = LoneAtomHash(atom);
   boost::hash_combine(hash, is_in_ring);
   boost::hash_combine(hash, atom->getIsAromatic());
   return hash;
 };
 
-std::vector<std::uint64_t> RingAwareAtomHashes(const RDKit::ROMol& molecule) {
+std::vector<std::size_t> RingAwareAtomHashes(const RDKit::ROMol& molecule) {
   const RDKit::RingInfo* ring_info = molecule.getRingInfo();
   if (!ring_info->isInitialized()) {
     RDKit::MolOps::findSSSR(molecule);
   };
   std::size_t n = molecule.getNumAtoms();
-  std::vector<std::uint64_t> atom_hashes (n);
+  std::vector<std::size_t> atom_hashes (n);
   for (std::size_t atom_idx = 0; atom_idx < n; ++atom_idx) {
     const RDKit::Atom* atom = molecule.getAtomWithIdx(atom_idx);
     atom_hashes[atom_idx] = RingAwareAtomHash(
@@ -58,14 +58,14 @@ std::vector<std::uint64_t> RingAwareAtomHashes(const RDKit::ROMol& molecule) {
   return atom_hashes;
 };
 
-std::uint64_t AtomKeyHash(const RDKit::Atom* atom) {
+std::size_t AtomKeyHash(const RDKit::Atom* atom) {
   AtomKey atom_key (atom);
   return hash_value(atom_key);
 };
 
-std::vector<std::uint64_t> AtomKeyHashes(const RDKit::ROMol& molecule) {
+std::vector<std::size_t> AtomKeyHashes(const RDKit::ROMol& molecule) {
   std::size_t n = molecule.getNumAtoms();
-  std::vector<std::uint64_t> atom_hashes (n);
+  std::vector<std::size_t> atom_hashes (n);
   for (std::size_t atom_idx = 0; atom_idx < n; ++atom_idx) {
     atom_hashes[atom_idx] = AtomKeyHash(molecule.getAtomWithIdx(atom_idx));
   };
@@ -77,23 +77,23 @@ std::vector<std::uint64_t> AtomKeyHashes(const RDKit::ROMol& molecule) {
 // This allows us to re-use the code later on.
 template <class Graph, class Edge>
 void MorganHashUpdate(
-  std::vector<std::uint64_t>& vertex_hashes,
+  std::vector<std::size_t>& vertex_hashes,
   const boost::dynamic_bitset<>& vertex_mask,
   const Graph& graph,
   const std::function<
-    std::uint64_t(const Edge&)>& edge_hasher = nullptr) {
-  std::vector<std::uint64_t> updated_vertex_hashes (vertex_hashes.size());
+    std::size_t(const Edge&)>& edge_hasher = nullptr) {
+  std::vector<std::size_t> updated_vertex_hashes (vertex_hashes.size());
   for (std::size_t vertex = vertex_mask.find_first();
     vertex != boost::dynamic_bitset<>::npos;
     vertex = vertex_mask.find_next(vertex)) {
-    std::vector<std::uint64_t> neighbor_hashes;
+    std::vector<std::size_t> neighbor_hashes;
     neighbor_hashes.reserve(boost::out_degree(vertex, graph));
     for (std::size_t neighbor : boost::make_iterator_range(
       boost::adjacent_vertices(vertex, graph))) {
       if (!vertex_mask[neighbor]) {
         continue;
       };
-      std::uint64_t neighbor_hash = vertex_hashes[neighbor];
+      std::size_t neighbor_hash = vertex_hashes[neighbor];
       if (edge_hasher) {
         auto [edge, _] = boost::edge(vertex, neighbor, graph);
         boost::hash_combine(neighbor_hash, edge_hasher(graph[edge]));
@@ -101,7 +101,7 @@ void MorganHashUpdate(
       neighbor_hashes.push_back(neighbor_hash);
     };
     std::sort(neighbor_hashes.begin(), neighbor_hashes.end());
-    std::uint64_t updated_hash = vertex_hashes[vertex];
+    std::size_t updated_hash = vertex_hashes[vertex];
     boost::hash_combine(updated_hash,
       boost::hash_range(neighbor_hashes.begin(), neighbor_hashes.end()));
     updated_vertex_hashes[vertex] = updated_hash;
@@ -110,13 +110,13 @@ void MorganHashUpdate(
 };
 
 template <class Graph, class Edge>
-std::uint64_t MorganHash(
-  const std::vector<std::uint64_t>& vertex_hashes,
+std::size_t MorganHash(
+  const std::vector<std::size_t>& vertex_hashes,
   const boost::dynamic_bitset<>& vertex_mask,
   const Graph& graph,
   std::uint8_t n_updates,
   const std::function<
-    std::uint64_t(const Edge&)>& edge_hasher = nullptr) {
+    std::size_t(const Edge&)>& edge_hasher = nullptr) {
   // Note that this hash is NOT the same (neither in value nor conceptually) as
   // the RDKit's Morgan fingerprints. Our hashes only capture information of a
   // specified subgraph, whereas the RDKit's implementation captures information
@@ -124,11 +124,11 @@ std::uint64_t MorganHash(
   if (vertex_mask.none()) {
     return 0;
   };
-  std::vector<std::uint64_t> morgan_hashes (vertex_hashes);
+  std::vector<std::size_t> morgan_hashes (vertex_hashes);
   for (std::uint8_t n = 0; n < n_updates; ++n) {
     MorganHashUpdate(morgan_hashes, vertex_mask, graph, edge_hasher);
   };
-  std::vector<std::uint64_t> mask_hashes;
+  std::vector<std::size_t> mask_hashes;
   mask_hashes.reserve(vertex_mask.count());
   for (std::size_t vertex = vertex_mask.find_first();
     vertex != boost::dynamic_bitset<>::npos;
@@ -141,19 +141,19 @@ std::uint64_t MorganHash(
 
 
 template <class Graph, class Edge>
-std::uint64_t CollapseHash(
+std::size_t CollapseHash(
   std::size_t vertex,
-  const std::vector<std::uint64_t>& vertex_hashes,
+  const std::vector<std::size_t>& vertex_hashes,
   const std::vector<std::uint8_t>& distances_to_root,
   const boost::dynamic_bitset<>& vertex_mask,
   const Graph& graph,
   const std::function<
-    std::uint64_t(const Edge&)>& edge_hasher = nullptr) {
+    std::size_t(const Edge&)>& edge_hasher = nullptr) {
   // Collapses the hashes of neighboring vertices at a distance greater or equal
   // to that of the root vertex onto the vertex's hash.
   // We include equidistant neighbors to capture intra-mask cycles.
   std::uint8_t vertex_distance = distances_to_root[vertex];
-  std::vector<std::uint64_t> neighbor_hashes;
+  std::vector<std::size_t> neighbor_hashes;
   neighbor_hashes.reserve(boost::out_degree(vertex, graph));
   for (std::size_t neighbor : boost::make_iterator_range(
     boost::adjacent_vertices(vertex, graph))) {
@@ -161,14 +161,14 @@ std::uint64_t CollapseHash(
     if (!vertex_mask[neighbor] || neighbor_distance < vertex_distance) {
       continue;
     };
-    std::uint64_t neighbor_hash = vertex_hashes[neighbor];
+    std::size_t neighbor_hash = vertex_hashes[neighbor];
     if (edge_hasher) {
       auto [edge, _] = boost::edge(vertex, neighbor, graph);
       boost::hash_combine(neighbor_hash, edge_hasher(graph[edge]));
     };
     neighbor_hashes.push_back(neighbor_hash);
   };
-  std::uint64_t collapsed_hash = vertex_hashes[vertex];
+  std::size_t collapsed_hash = vertex_hashes[vertex];
   std::sort(neighbor_hashes.begin(), neighbor_hashes.end());
   boost::hash_combine(collapsed_hash,
     boost::hash_range(neighbor_hashes.begin(), neighbor_hashes.end()));
@@ -176,14 +176,14 @@ std::uint64_t CollapseHash(
 };
 
 template <class Graph, class Edge>
-std::uint64_t CollapsingHash(
+std::size_t CollapsingHash(
   std::size_t root,
-  const std::vector<std::uint64_t>& vertex_hashes,
+  const std::vector<std::size_t>& vertex_hashes,
   const std::vector<std::uint8_t>& distances_to_root,
   const boost::dynamic_bitset<>& vertex_mask,
   const Graph& graph,
   const std::function<
-    std::uint64_t(const Edge&)>& edge_hasher = nullptr) {
+    std::size_t(const Edge&)>& edge_hasher = nullptr) {
   // Similar to a Morgan hash, but the final value depends on the root vertex.
   // Hence two identical subgraphs may have different hashes depending on which 
   // vertex they are rooted.
@@ -206,8 +206,8 @@ std::uint64_t CollapsingHash(
   // Iterate over the vertices by descending distance and update their hashes by
   // collapsing the hashes of neighboring vertices onto them.
   std::uint8_t prev_distance = vertices_by_distance[0].second;
-  std::vector<std::uint64_t> prev_vertex_hashes (vertex_hashes);
-  std::vector<std::uint64_t> current_vertex_hashes (vertex_hashes);
+  std::vector<std::size_t> prev_vertex_hashes (vertex_hashes);
+  std::vector<std::size_t> current_vertex_hashes (vertex_hashes);
   for (const auto& [vertex, distance] : vertices_by_distance) {
     // We update the hashes of all equidistant vertices simultaneously. Since
     // equidistant vertices influence each others hashes (see CollapseHash())
@@ -223,7 +223,7 @@ std::uint64_t CollapsingHash(
 };
 
 
-std::uint64_t BondTypeAsHash(const RDKit::Bond* bond) {
+std::size_t BondTypeAsHash(const RDKit::Bond* bond) {
   return bond->getBondType();
 };
 
