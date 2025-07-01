@@ -10,6 +10,7 @@ struct AttachmentPoint {
   std::size_t atom_idx = 0;
   std::size_t type = 0;
 
+  AttachmentPoint() = default;
   AttachmentPoint(std::size_t atom_idx, std::size_t type) :
     atom_idx(atom_idx), type(type) {};
 };
