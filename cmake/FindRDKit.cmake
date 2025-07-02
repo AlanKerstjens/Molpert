@@ -1,6 +1,6 @@
-#[=======================================================================[.rst:
+#[========================================================================[.rst:
 FindRDKit
--------
+---------
 
 Finds the RDKit library.
 
@@ -9,16 +9,16 @@ Result Variables
 
 This will define the following variables:
 
-``RDKit_FOUND``
+`RDKit_FOUND`
   True if the system has the RDKit library.
-``RDKit_VERSION``
+`RDKit_VERSION`
   The version of the RDKit library which was found.
-``RDKit_INCLUDE_DIRS``
+`RDKit_INCLUDE_DIRS`
   Include directories needed to use RDKit.
-``RDKit_LIBRARY_DIRS``
+`RDKit_LIBRARY_DIRS`
   Library directories needed to link to RDKit.
 
-#]=======================================================================]
+#]========================================================================]
 
 set(RDKit_FOUND FALSE)
 
