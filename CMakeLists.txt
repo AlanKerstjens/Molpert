@@ -71,6 +71,14 @@ if(BUILD_PYTHON_BINDINGS)
         "This is very likely to result in ABI incompatibility. "
         "Install the remaining dependencies through conda, "
         "or install the RDKit from source.")
+      message(STATUS "CONDA_PREFIX: $ENV{CONDA_PREFIX}")
+      message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
+      message(STATUS "Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
+      message(STATUS "BoostPython_INCLUDE_DIRS: ${BoostPython_INCLUDE_DIRS}")
+      message(STATUS "BoostPython_LIBRARY: ${BoostPython_LIBRARY}")
+      message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
+      message(STATUS "Python3_LIBRARY_DIRS: ${Python3_LIBRARY_DIRS}")
+      message(STATUS "Python3_LIBRARIES: ${Python3_LIBRARIES}")
     endif()
   endif()
 
