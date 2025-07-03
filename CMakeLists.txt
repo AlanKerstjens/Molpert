@@ -43,7 +43,14 @@ target_link_libraries(Molpert INTERFACE
 
 
 # Enable building Python bindings.
-option(BUILD_PYTHON_BINDINGS "Enable building Python bindings" ON)
+option(BUILD_PYTHON_BINDINGS
+  "Enable building Python bindings"
+  ON)
+
+# Enable library compatibility check.
+option(ENFORCE_LIBRARY_COMPATIBILITY
+  "Enforce dependency library ABI compatibility"
+  ON)
 
 # Conditionally build Python bindings.
 if(BUILD_PYTHON_BINDINGS)
@@ -59,7 +66,7 @@ if(BUILD_PYTHON_BINDINGS)
   # same libraries that were used to build the RDKit. Check if we found them.
   from_conda(RDKit_FROM_CONDA
     RDKit_INCLUDE_DIRS RDKit_LIBRARY_DIRS)
-  if (${RDKit_FROM_CONDA})
+  if (RDKit_FROM_CONDA AND ENFORCE_LIBRARY_COMPATIBILITY)
     from_conda(REST_FROM_CONDA
       Boost_INCLUDE_DIRS Boost_LIBRARY_DIRS
       BoostPython_INCLUDE_DIRS BoostPython_LIBRARY
@@ -67,10 +74,12 @@ if(BUILD_PYTHON_BINDINGS)
     if (NOT REST_FROM_CONDA)
       message(SEND_ERROR 
         "The RDKit was installed with conda, "
-        "but some of the remaining dependencies were not. "
-        "This is very likely to result in ABI incompatibility. "
+        "but some of the found remaining dependencies were not. "
+        "This is likely to result in ABI incompatibility. "
         "Install the remaining dependencies through conda, "
-        "or install the RDKit from source.")
+        "or install the RDKit from source. "
+        "If you believe this to be a false warning, you may "
+        "disable this check by setting -DENFORCE_LIBRARY_COMPATIBILITY=OFF")
       message(STATUS "CONDA_PREFIX: $ENV{CONDA_PREFIX}")
       message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
       message(STATUS "Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
@@ -91,15 +100,24 @@ if(BUILD_PYTHON_BINDINGS)
     ${Python3_INCLUDE_DIRS}
     ${BoostPython_INCLUDE_DIRS})
 
-  target_link_directories(pyMolpert PUBLIC
-    ${Python3_LIBRARY_DIRS})
-
   target_link_libraries(pyMolpert PUBLIC
     Molpert
-    ${Python3_LIBRARIES}
     ${BoostPython_LIBRARY})
 
-  # Define and set the RPATH.
+  # Do some platform-specific Python module setup.
+  if (APPLE)
+    # On macOS don't link libpython, use dynamic lookup instead.
+    set_target_properties(pyMolpert PROPERTIES
+      LINK_FLAGS "-undefined dynamic_lookup")
+  else()
+    # On GNU+Linux and Windows link libpython.
+    target_link_directories(pyMolpert PUBLIC
+      ${Python3_LIBRARY_DIRS})
+    target_link_libraries(pyMolpert PUBLIC
+      ${Python3_LIBRARIES})
+  endif()
+
+  # Define RPATH.
   set(LINK_DIRECTORIES
     ${Boost_LIBRARY_DIRS}
     ${RDKit_LIBRARY_DIRS}
