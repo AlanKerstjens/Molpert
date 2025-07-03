@@ -36,7 +36,10 @@ if(DEFINED ENV{CONDA_PREFIX})
     NO_DEFAULT_PATH)
   # Search for Boost Python library.
   file(GLOB BOOST_PYTHON_LIB_CANDIDATES
-    "$ENV{CONDA_PREFIX}/lib/libboost_python*.so")
+    "$ENV{CONDA_PREFIX}/lib/libboost_python*.so"    # GNU+Linux
+    "$ENV{CONDA_PREFIX}/lib/libboost_python*.dylib" # macOS
+    "$ENV{CONDA_PREFIX}/lib/*boost_python*.lib"     # Windows
+  )
   list(LENGTH BOOST_PYTHON_LIB_CANDIDATES NUM_BOOST_PYTHON_LIB_CANDIDATES)
   if (NUM_BOOST_PYTHON_LIB_CANDIDATES EQUAL 1)
     # Set the output variables and print the status message.
