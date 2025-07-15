@@ -4,50 +4,129 @@ Molpert is a library for graph-based perturbation of RDKit molecules. It support
 
 For a more detailed description please see the corresponding publication: [Kerstjens, A., De Winter, H. A molecule perturbation software library and its application to study the effects of molecular design constraints. J Cheminform 15, 89 (2023)](https://doi.org/10.1186/s13321-023-00761-5)
 
+
 # Installation
 
-## Installation from source
+Molpert is distributed as source code. It is a header-only C++ library. 
+If you are only interested in the C++ API all you have to do is clone the
+repository and add it to your compiler's include path.
 
-### Prerequisites
+If you also need the Python API you must compile the Python module from 
+source. This requires a series of dependencies. For a lean installation we 
+recommend installing these either
+[from source or using your system's package manager](#system-installation).
+Alternatively, you may install the dependencies
+[using Anaconda](#anaconda-installation).
+
+The following instructions are for GNU/Linux. For alternative operating systems
+you will have to adapt these commands slightly.
+
+## System installation
 
 Ensure the following dependencies are installed:
-
+* [Python](https://www.python.org/)
 * [RDKit](https://rdkit.org/)
-* [Boost](https://www.boost.org/). You already have this if you installed the RDKit. If you'd like to build the Python bindings make sure Boost.Python is installed.
-* [CMake](https://cmake.org/). Only necessary to build the Python bindings.
+* [Boost](https://www.boost.org/).
+  You already have this if you installed the RDKit.
+  Make sure the `Boost.Python` component is installed.
+* [CMake](https://cmake.org/)
 
-### Instructions
-
-The following instructions are for GNU+Linux. For alternative operating systems you'll have to adapt these commands slightly.
+On a Debian-based system you may do so using `apt`,
 
 ```shell
-git clone https://github.com/AlanKerstjens/Molpert.git
+sudo apt install librdkit-dev python3-rdkit cmake
 ```
 
-Molpert is header-only. If all you care about is the C++ API you are done. If you want the Python bindings too you must build them.
+Thereafter clone the Molpert repository
+and build the Python module by invoking your build system,
 
 ```shell
 export MOLPERT="$(pwd)/Molpert"
+git clone https://github.com/AlanKerstjens/Molpert.git ${MOLPERT}
 mkdir ${MOLPERT}/build && cd ${MOLPERT}/build
 cmake ..
 make install
 ```
 
-To be able to import the library from Python add `${MOLPERT}/lib` to your `${PYTHONPATH}`. Consider doing so in your `bash_profile` file. Otherwise you'll have to manually extend `${PYTHONPATH}` everytime you open a new shell.
+## Anaconda installation
+
+Install all dependencies (including a C++ compiler and CMake)
+in a `conda` environment. The following instructions assume you are making
+a new `conda` environment called `molpert`.
+
+```shell
+conda create -c conda-forge -n molpert cxx-compiler cmake rdkit-dev libboost-devel eigen
+```
+
+Thereafter activate the `molpert` environment, clone the Molpert repository
+and build the Python module by invoking the **`conda` environment's** build
+system.
+
+```shell
+export MOLPERT="$(pwd)/Molpert"
+conda activate molpert
+git clone https://github.com/AlanKerstjens/Molpert.git ${MOLPERT}
+mkdir ${MOLPERT}/build && cd ${MOLPERT}/build
+cmake ..
+make install
+```
+
+## Wrapping up
+
+You now should have a file called `molpert.so` (or similar) in the 
+`${MOLPERT}/lib` directory. This is your Python module.
+Test if you can import it by changing to the aforementioned directory
+and trying to import said file.
+
+```shell
+cd ${MOLPERT}/lib
+python -c "import molpert; print(molpert)"
+```
+
+To be able to import the module from any directory
+add `${MOLPERT}/lib` to your `${PYTHONPATH}`.
 
 ```shell
 export PYTHONPATH="${PYTHONPATH}:${MOLPERT}/lib"
 ```
 
-### Troubleshooting
-
-CMake will try to find the dependencies for you. To avoid problems ensure you build Molpert with the same Boost and Python versions that you used to build the RDKit. If CMake finds a different Boost or Python installation you'll need to point it to the correct one, as described [here](https://cmake.org/cmake/help/latest/module/FindBoost.html) and [here](https://cmake.org/cmake/help/latest/module/FindPython.html).
-
-CMake will search for the RDKit in the active Anaconda environment (if you have one) and at `${RDBASE}` if set. If neither of these are the case you need to specify the path to the RDKit yourself. Replace the above CMake command with the one below, substituting the `<placeholder/path>` with your path.
+Consider doing so in your `.bashrc` file (or similar).
+Otherwise you will have to manually extend `${PYTHONPATH}`
+everytime you open a new shell.
 
 ```shell
-cmake -DRDKit_ROOT=<path/to/rdkit> ..
+echo 'export PYTHONPATH="${PYTHONPATH}:${MOLPERT}/lib"' >> ~/.bashrc
+source ~/.bashrc
 ```
+
+## Troubleshooting
+
+When compiling the Python module it is critical that you link against the same
+libraries that were used to build the dependencies
+(C/C++ runtime, Python, RDKit and Boost).
+This means **you should not mix system and Anaconda compilers and/or libraries**.
+
+**CMake should find a set of compatible libraries for you**. If no `conda`
+environment is active it should find only system libraries. If a `conda` 
+environment is active it should find only Anaconda libraries.
+**Nonetheless, read the CMake output carefully to verify this is the case**.
+
+If you have installed the dependencies, but CMake does not find them (or finds
+the wrong version), you will need to provide it with hints to where to find the
+dependencies:
+* [Pointing CMake to C/C++ compiler / runtime](https://cmake.org/cmake/help/book/mastering-cmake/chapter/Getting%20Started.html#specifying-the-compiler-to-cmake)
+* [Pointing CMake to Python](https://cmake.org/cmake/help/latest/module/FindPython3.html)
+* [Pointing CMake to Boost](https://cmake.org/cmake/help/latest/module/FindBoost.html)
+* Pointing CMake to RDKit. CMake will search for the RDKit in the active 
+  Anaconda environment (if you have one) and at `${RDBASE}` if set. If neither 
+  of these are the case you need to specify the path to the RDKit manually.
+  To do so add `-DRDKit_ROOT=/path/to/rdkit` to your `cmake` command,
+  substituting the `/placeholder/path` with the relevant path.
+
+If CMake complains that the found libraries are incompatible, but you are
+confident this is not the case, you can suppress the error by adding
+`-DENFORCE_LIBRARY_COMPATIBILITY=OFF` to the `cmake` command.
+
 
 # Getting started
 
